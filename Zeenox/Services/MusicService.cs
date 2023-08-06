@@ -3,54 +3,100 @@ using System.Text;
 using System.Text.Json;
 using Discord;
 using Lavalink4NET;
-using Lavalink4NET.Decoding;
-using Lavalink4NET.Player;
-using Lavalink4NET.Rest;
-using Lavalink4NET.Tracking;
+using Lavalink4NET.DiscordNet;
+using Lavalink4NET.Extensions;
+using Lavalink4NET.InactivityTracking;
+using Lavalink4NET.InactivityTracking.Events;
+using Lavalink4NET.Lyrics;
+using Lavalink4NET.Players;
+using Lavalink4NET.Players.Queued;
+using Lavalink4NET.Rest.Entities.Tracks;
+using Lavalink4NET.Tracks;
 using Zeenox.Models;
 
 namespace Zeenox.Services;
 
 public class MusicService
 {
-    private readonly LavalinkNode _lavaNode;
+    private readonly IAudioService _audioService;
     private readonly DatabaseService _databaseService;
+    private readonly SpotifyService _spotifyService;
+    private readonly ILyricsService _lyricsService;
     private readonly Dictionary<ulong, List<WebSocket>> _webSockets = new();
 
     public MusicService(
         IAudioService audioService,
-        InactivityTrackingService trackingService,
-        DatabaseService databaseService
+        DatabaseService databaseService,
+        SpotifyService spotifyService,
+        ILyricsService lyricsService,
+        IInactivityTrackingService trackingService
     )
     {
         _databaseService = databaseService;
-        _lavaNode = (LavalinkNode)audioService;
+        _spotifyService = spotifyService;
+        _lyricsService = lyricsService;
+        _audioService = audioService;
+        trackingService.InactivePlayer += OnInactivePlayer;
     }
 
-    public bool TryGetPlayer(ulong guildId, out ZeenoxPlayer? player)
+    private static async Task OnInactivePlayer(object sender, InactivePlayerEventArgs eventArgs)
     {
-        player = _lavaNode.GetPlayer<ZeenoxPlayer>(guildId);
-        return player is not null;
+        if (!eventArgs.ShouldStop)
+            return;
+        var player = (ZeenoxPlayer)eventArgs.Player;
+        await player.DeleteMessageAsync();
+        await player.DisposeAsync();
+    }
+
+    public async Task<(bool playerExists, ZeenoxPlayer? player)> TryGetPlayer(ulong guildId)
+    {
+        var player = await _audioService.Players.GetPlayerAsync<ZeenoxPlayer>(guildId);
+        return (player is not null, player);
     }
 
     public async Task<ZeenoxPlayer> GetOrCreatePlayer(
         ulong guildId,
         ITextChannel textChannel,
-        IVoiceChannel voiceChannel
+        IVoiceChannel voiceChannel,
+        LavalinkTrack? initialTrack = null
     )
     {
-        if (TryGetPlayer(guildId, out var player))
+        var (playerExists, player) = await TryGetPlayer(guildId);
+        if (playerExists)
             return player!;
 
         var guildConfig = await _databaseService.GetGuildConfigAsync(guildId);
 
-        player = await _lavaNode.JoinAsync(
-            () => new ZeenoxPlayer(textChannel, voiceChannel),
-            guildId,
-            voiceChannel.Id,
-            true
+        var factory = new PlayerFactory<ZeenoxPlayer, ZeenoxPlayerOptions>(
+            (
+                (properties, _) =>
+                {
+                    properties.Options.Value.TextChannel = textChannel;
+                    properties.Options.Value.VoiceChannel = voiceChannel;
+                    properties.Options.Value.SpotifyService = _spotifyService;
+                    return ValueTask.FromResult(new ZeenoxPlayer(properties));
+                }
+            )
         );
-        await player.SetVolumeAsync(guildConfig.MusicSettings.DefaultVolume / 100f);
+
+        player = await _audioService.Players
+            .JoinAsync(
+                guildId,
+                voiceChannel.Id,
+                factory,
+                options =>
+                {
+                    options.SelfDeaf = true;
+                    options.InitialVolume =
+                        (float)Math.Floor(guildConfig.MusicSettings.DefaultVolume / (double)2)
+                        / 100f;
+                    if (initialTrack is not null)
+                    {
+                        options.InitialTrack = new TrackReference(initialTrack);
+                    }
+                }
+            )
+            .ConfigureAwait(false);
         return player;
     }
 
@@ -60,30 +106,39 @@ public class MusicService
         IVoiceChannel voiceChannel,
         IUser requester,
         string query,
-        bool force = false
+        bool enqueue = true
     )
     {
-        var results = await _lavaNode.LoadTracksAsync(query);
-        if (results.LoadType is TrackLoadType.NoMatches)
+        var results = await _audioService.Tracks.LoadTracksAsync(
+            query,
+            new TrackLoadOptions
+            {
+                SearchMode = Uri.IsWellFormedUriString(query, UriKind.Absolute)
+                    ? TrackSearchMode.None
+                    : TrackSearchMode.YouTube
+            }
+        );
+        if (!results.HasMatches)
             return false;
 
-        if (results.Tracks is null || results.Tracks.Length == 0)
+        if (results.Tracks.Length == 0)
             return false;
 
-        var player = await GetOrCreatePlayer(guildId, textChannel, voiceChannel);
         var tracks = results.Tracks;
-        foreach (var track in tracks)
+        var player = await GetOrCreatePlayer(guildId, textChannel, voiceChannel);
+
+        /*foreach (var track in tracks)
         {
             track.Context = new TrackContext { Requester = requester };
-        }
+        }*/
 
-        if (results.LoadType is TrackLoadType.PlaylistLoaded)
+        if (results.IsPlaylist)
         {
             await player.PlayAsync(tracks);
             return true;
         }
 
-        await player.PlayAsync(tracks[0], force);
+        await player.PlayAsync(new TrackReference(tracks[0]));
         return true;
     }
 
@@ -101,17 +156,18 @@ public class MusicService
 
         var player = await GetOrCreatePlayer(guildId, textChannel, voiceChannel);
         var tracks = tracksEnumerable.ToArray();
-        foreach (var track in tracks)
+        /*foreach (var track in tracks)
         {
             track.Context = new TrackContext { Requester = requester };
-        }
+        }*/
 
         await player.PlayAsync(tracks);
     }
 
     public async Task SkipAsync(ulong guildId)
     {
-        if (!TryGetPlayer(guildId, out var player))
+        var (playerExists, player) = await TryGetPlayer(guildId);
+        if (!playerExists)
             return;
 
         await player!.SkipAsync();
@@ -119,7 +175,8 @@ public class MusicService
 
     public async Task RewindAsync(ulong guildId)
     {
-        if (!TryGetPlayer(guildId, out var player))
+        var (playerExists, player) = await TryGetPlayer(guildId);
+        if (!playerExists)
             return;
 
         await player!.RewindAsync();
@@ -127,25 +184,28 @@ public class MusicService
 
     public async Task SetVolumeAsync(ulong guildId, int volume)
     {
-        if (!TryGetPlayer(guildId, out var player))
+        var (playerExists, player) = await TryGetPlayer(guildId);
+        if (!playerExists)
             return;
 
-        await player!.SetVolumeAsync(volume / 100f);
+        await player!.SetVolumeAsync((float)Math.Floor(volume / (double)2) / 100f);
     }
 
-    public async Task SetVolumeAsync(ulong guildId, Action<int> volumeAction)
+    public async Task OffsetVolumeAsync(ulong guildId, int offset)
     {
-        if (!TryGetPlayer(guildId, out var player))
+        var (playerExists, player) = await TryGetPlayer(guildId);
+        if (!playerExists)
             return;
 
         var volume = (int)(player!.Volume * 100);
-        volumeAction(volume);
+        volume += offset;
         await player.SetVolumeAsync(volume / 100f);
     }
 
     public async Task<bool> PauseOrResumeAsync(ulong guildId)
     {
-        if (!TryGetPlayer(guildId, out var player))
+        var (playerExists, player) = await TryGetPlayer(guildId);
+        if (!playerExists)
             return false;
 
         if (player!.State is PlayerState.Paused)
@@ -160,43 +220,60 @@ public class MusicService
         return player.State is PlayerState.Paused;
     }
 
-    public Task CycleLoopMode(ulong guildId)
+    public async Task CycleLoopMode(ulong guildId)
     {
-        if (!TryGetPlayer(guildId, out var player))
-            return Task.CompletedTask;
+        var (playerExists, player) = await TryGetPlayer(guildId);
+        if (!playerExists)
+            return;
 
-        var shouldDisable = !Enum.IsDefined(typeof(PlayerLoopMode), player!.LoopMode + 1);
-        return player.SetLoopModeAsync(shouldDisable ? 0 : player.LoopMode + 1);
+        var shouldDisable = !Enum.IsDefined(typeof(TrackRepeatMode), player!.RepeatMode + 1);
+        await player.SetLoopModeAsync(shouldDisable ? 0 : player.RepeatMode + 1);
     }
 
-    public Task SeekAsync(ulong guildId, int position)
+    public async Task SeekAsync(ulong guildId, int position)
     {
-        return !TryGetPlayer(guildId, out var player)
-            ? Task.CompletedTask
-            : player!.SeekPositionAsync(TimeSpan.FromSeconds(position));
+        var (playerExists, player) = await TryGetPlayer(guildId);
+        if (!playerExists)
+            return;
+
+        await player!.SeekAsync(TimeSpan.FromSeconds(position));
     }
 
-    public Task ClearQueueAsync(ulong guildId)
+    public async Task ClearQueueAsync(ulong guildId)
     {
-        return !TryGetPlayer(guildId, out var player)
-            ? Task.CompletedTask
-            : player!.ClearQueueAsync();
+        var (playerExists, player) = await TryGetPlayer(guildId);
+        if (!playerExists)
+            return;
+
+        await player!.ClearQueueAsync();
     }
 
-    public Task ShuffleQueueAsync(ulong guildId)
+    public async Task ShuffleQueueAsync(ulong guildId)
     {
-        if (!TryGetPlayer(guildId, out var player))
-            return Task.CompletedTask;
+        var (playerExists, player) = await TryGetPlayer(guildId);
+        if (!playerExists)
+            return;
 
-        player!.Queue.Shuffle();
-        return Task.CompletedTask;
+        await player!.Queue.ShuffleAsync();
     }
 
-    public Task DistinctQueueAsync(ulong guildId)
+    public async Task DistinctQueueAsync(ulong guildId)
     {
-        return !TryGetPlayer(guildId, out var player)
-            ? Task.CompletedTask
-            : player!.DistinctQueueAsync();
+        var (playerExists, player) = await TryGetPlayer(guildId);
+        if (!playerExists)
+            return;
+        await player!.DistinctQueueAsync();
+    }
+
+    public async Task<string?> GetLyricsAsync(ulong guildId)
+    {
+        var (playerExists, player) = await TryGetPlayer(guildId);
+        if (!playerExists)
+            return null;
+
+        return player!.CurrentTrack is null
+            ? null
+            : await _lyricsService.GetLyricsAsync(player.CurrentTrack);
     }
 
     public async Task SendWebSocketMessagesAsync(ulong guildId, SocketMessage message)
@@ -216,6 +293,18 @@ public class MusicService
         }
     }
 
+    public async Task<int> GetPlayerPositionAsync(ulong guildId)
+    {
+        var (playerExists, player) = await TryGetPlayer(guildId);
+        if (!playerExists)
+            return 0;
+
+        if (player!.CurrentTrack is null)
+            return 0;
+
+        return (int)player.Position!.Value.Position.TotalSeconds;
+    }
+
     public void AddWebSocket(ulong guildId, WebSocket webSocket)
     {
         if (!_webSockets.ContainsKey(guildId))
@@ -230,5 +319,14 @@ public class MusicService
             return;
 
         _webSockets[guildId].Remove(webSocket);
+    }
+
+    public async Task ReverseQueueAsync(ulong guildId)
+    {
+        var (playerExists, player) = await TryGetPlayer(guildId);
+        if (!playerExists)
+            return;
+
+        await player!.ReverseQueueAsync().ConfigureAwait(false);
     }
 }

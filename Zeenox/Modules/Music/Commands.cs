@@ -1,10 +1,10 @@
 ﻿using Discord;
 using Discord.Interactions;
-using Lavalink4NET.Decoding;
 using Zeenox.Modules.Music.Preconditions;
 
 namespace Zeenox.Modules.Music;
 
+[RequireContext(ContextType.Guild)]
 public class Commands : MusicBase
 {
     [RequireVoiceChannel]
@@ -27,7 +27,7 @@ public class Commands : MusicBase
     public async Task PlayFavAsync()
     {
         await DeferAsync(true);
-        var favorites = (await DatabaseService.GetUserAsync(Context.User.Id)).FavoriteSongs;
+        /*var favorites = (await DatabaseService.GetUserAsync(Context.User.Id)).FavoriteSongs;
         if (favorites.Count == 0)
         {
             await FollowupAsync("You don't have any favorite songs", ephemeral: true);
@@ -41,7 +41,7 @@ public class Commands : MusicBase
             VoiceState!.VoiceChannel,
             Context.User,
             tracks
-        );
+        );*/
         await FollowupAsync("✅");
     }
 
@@ -87,5 +87,33 @@ public class Commands : MusicBase
         await DeferAsync(true);
         await MusicService.ClearQueueAsync(Context.Guild.Id);
         await FollowupAsync("✅", ephemeral: true);
+    }
+    
+    [RequireVoiceChannel]
+    [RequirePlayer]
+    [RequireSameVoiceChannel]
+    [SlashCommand("reverse", "Reverses the queue")]
+    public async Task ReverseAsync()
+    {
+        await DeferAsync(true);
+        await MusicService.ReverseQueueAsync(Context.Guild.Id);
+        await FollowupAsync("✅", ephemeral: true);
+    }
+
+    [RequireVoiceChannel]
+    [RequirePlayer]
+    [RequireSameVoiceChannel]
+    [SlashCommand("lyrics", "Shows the lyrics of the current song")]
+    public async Task LyricsAsync()
+    {
+        await DeferAsync(true);
+        var lyrics = await MusicService.GetLyricsAsync(Context.Guild.Id);
+        if (lyrics is null)
+        {
+            await FollowupAsync("No lyrics found", ephemeral: true);
+            return;
+        }
+        
+        await FollowupAsync(lyrics, ephemeral: true);
     }
 }

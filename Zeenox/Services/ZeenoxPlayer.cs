@@ -1,18 +1,25 @@
-﻿using System.Globalization;
-using Discord;
-using Lavalink4NET.Player;
+﻿using Discord;
+using Lavalink4NET.Players;
+using Lavalink4NET.Players.Queued;
+using Lavalink4NET.Players.Vote;
+using Lavalink4NET.Protocol.Payloads.Events;
+using Lavalink4NET.Tracks;
+using Newtonsoft.Json;
 using Zeenox.Models;
 
 namespace Zeenox.Services;
 
-public class ZeenoxPlayer : VoteLavalinkPlayer
+public sealed class ZeenoxPlayer : VoteLavalinkPlayer
 {
-    public ZeenoxPlayer(ITextChannel textChannel, IVoiceChannel voiceChannel)
+    public ZeenoxPlayer(IPlayerProperties<ZeenoxPlayer, ZeenoxPlayerOptions> properties)
+        : base(properties)
     {
-        TextChannel = textChannel;
-        VoiceChannel = voiceChannel;
+        TextChannel = properties.Options.Value.TextChannel;
+        VoiceChannel = properties.Options.Value.VoiceChannel;
+        SpotifyService = properties.Options.Value.SpotifyService;
     }
 
+    private SpotifyService SpotifyService { get; }
     private ITextChannel TextChannel { get; }
     private IVoiceChannel VoiceChannel { get; }
     private IUserMessage? NowPlayingMessage { get; set; }
@@ -26,47 +33,41 @@ public class ZeenoxPlayer : VoteLavalinkPlayer
             return;
 
         await PlayAsync(tracks[0]);
-        Queue.AddRange(tracks[1..]);
-        await UpdateNowPlayingMessageAsync();
+        await Queue.AddRangeAsync(
+            tracks.Select(x => new TrackQueueItem(new TrackReference(x))).Skip(1).ToList()
+        );
     }
 
-    public override async Task<int> PlayAsync(
-        LavalinkTrack track,
-        TimeSpan? startTime = null,
-        TimeSpan? endTime = null,
-        bool noReplace = false
+    public override async ValueTask PlayAsync(
+        TrackReference trackReference,
+        TrackPlayProperties properties = new(),
+        CancellationToken cancellationToken = new()
     )
     {
-        var result = await base.PlayAsync(track, startTime, endTime, noReplace);
+        await base.PlayAsync(trackReference, properties, cancellationToken);
         await UpdateNowPlayingMessageAsync();
-        return result;
     }
 
-    public override async Task<int> PlayAsync(
-        LavalinkTrack track,
-        bool enqueue,
-        TimeSpan? startTime = null,
-        TimeSpan? endTime = null,
-        bool noReplace = false
+    public override async ValueTask SkipAsync(
+        int count = 1,
+        CancellationToken cancellationToken = new()
     )
     {
-        var result = await base.PlayAsync(track, enqueue, startTime, endTime, noReplace);
-        await UpdateNowPlayingMessageAsync();
-        return result;
-    }
-
-    public override async Task SkipAsync(int count = 1)
-    {
-        await base.SkipAsync(count);
+        await base.SkipAsync(count, cancellationToken);
         await UpdateNowPlayingMessageAsync();
     }
 
-    public Task RewindAsync()
+    public ValueTask<int> RewindAsync()
     {
-        return PlayAsync(History[^1], false, TimeSpan.Zero, null, true);
+        var track = History[^1];
+        History.RemoveAt(History.Count - 1);
+        return PlayAsync(track, false);
     }
 
-    public override async Task<UserVoteSkipInfo> VoteAsync(ulong userId, float percentage = 0.5f)
+    public override async ValueTask<UserVoteSkipInfo> VoteAsync(
+        ulong userId,
+        float percentage = 0.5f
+    )
     {
         var result = await base.VoteAsync(userId, percentage);
         LastVoteSkipInfo = result;
@@ -80,134 +81,86 @@ public class ZeenoxPlayer : VoteLavalinkPlayer
         base.ClearVotes();
     }
 
-    public Task SetLoopModeAsync(PlayerLoopMode loopMode)
+    public override async ValueTask PauseAsync(CancellationToken cancellationToken = new())
     {
-        LoopMode = loopMode;
-        return UpdateNowPlayingMessageAsync();
-    }
-
-    public Task ClearQueueAsync()
-    {
-        Queue.Clear();
-        return UpdateNowPlayingMessageAsync();
-    }
-
-    public Task DistinctQueueAsync()
-    {
-        Queue.Distinct();
-        return UpdateNowPlayingMessageAsync();
-    }
-
-    public override async Task SetVolumeAsync(
-        float volume = 1,
-        bool normalize = false,
-        bool force = false
-    )
-    {
-        await base.SetVolumeAsync(volume, normalize, force);
+        await base.PauseAsync(cancellationToken);
         await UpdateNowPlayingMessageAsync();
     }
 
-    private async Task UpdateNowPlayingMessageAsync()
+    public override async ValueTask ResumeAsync(CancellationToken cancellationToken = new())
     {
-        var context = (TrackContext)CurrentTrack?.Context!;
+        await base.ResumeAsync(cancellationToken);
+        await UpdateNowPlayingMessageAsync();
+    }
 
-        EmbedBuilder eb;
-        if (CurrentTrack is not null)
-        {
-            eb = new EmbedBuilder()
-                .WithAuthor(
-                    "Now Playing",
-                    "https://bestanimations.com/media/discs/895872755cd-animated-gif-9.gif"
-                )
-                .WithTitle(
-                    CurrentTrack.SourceName == "spotify"
-                        ? $"{CurrentTrack.Author} - {CurrentTrack.Title}"
-                        : CurrentTrack.Title
-                )
-                .WithUrl(CurrentTrack.Uri?.ToString() ?? "")
-                //.WithImageUrl(context.CoverUrl)
-                .WithColor(new Color(31, 31, 31))
-                .AddField("Added By", context.Requester.Mention, true)
-                .AddField("Length", $"`{CurrentTrack.Duration:mm\\:ss}`", true)
-                .AddField(
-                    "Volume",
-                    $"`{Math.Round(Volume * 100).ToString(CultureInfo.InvariantCulture)}%`",
-                    true
-                );
-            if (Queue.Count > 0)
-                eb.AddField("Queue", $"`{Queue.Count.ToString()}`", true);
-        }
-        else
-        {
-            eb = new EmbedBuilder().WithTitle("No song is currently playing");
-        }
+    public Task SetLoopModeAsync(TrackRepeatMode repeatMode)
+    {
+        RepeatMode = repeatMode;
+        return UpdateNowPlayingMessageAsync();
+    }
 
-        var cb = new ComponentBuilder();
-        if (CurrentTrack is not null)
-        {
-            cb.WithButton(
-                    "Back",
-                    "previous",
-                    emote: new Emoji("⏮"),
-                    disabled: History.Count == 0,
-                    row: 0
+    public async Task ClearQueueAsync()
+    {
+        await Queue.ClearAsync();
+        await UpdateNowPlayingMessageAsync();
+    }
+
+    public async Task DistinctQueueAsync()
+    {
+        await Queue.DistinctAsync();
+        await UpdateNowPlayingMessageAsync();
+    }
+    
+    public async Task ReverseQueueAsync()
+    {
+        var reversed = Queue.Reverse().ToList();
+        await Queue.ClearAsync();
+        await Queue.AddRangeAsync(reversed);
+        await UpdateNowPlayingMessageAsync();
+    }
+
+    public override async ValueTask SetVolumeAsync(
+        float volume,
+        CancellationToken cancellationToken = new()
+    )
+    {
+        await base.SetVolumeAsync(volume, cancellationToken);
+        await UpdateNowPlayingMessageAsync();
+    }
+
+    private async Task UpdateNowPlayingMessageAsync(LavalinkTrack? track = null)
+    {
+        var coverUrl = track is not null
+            ? await SpotifyService.GetCoverUrl(track.Identifier)
+            : CurrentTrack is not null
+                ? await SpotifyService.GetCoverUrl(CurrentTrack.Identifier)
+                : null;
+
+        var eb = track is not null
+            ? new NowPlayingEmbed(track, Volume, Queue, coverUrl)
+            : CurrentTrack is not null
+                ? new NowPlayingEmbed(CurrentTrack, Volume, Queue, coverUrl)
+                : new EmbedBuilder().WithTitle("No song is currently playing, will disconnect in 3 minutes.");
+
+        var cb = track is not null
+            ? new NowPlayingButtons(
+                History.Count,
+                State is PlayerState.Paused,
+                LastVoteSkipInfo,
+                Queue.Count,
+                Volume,
+                RepeatMode
+            )
+            : CurrentTrack is not null
+                ? new NowPlayingButtons(
+                    History.Count,
+                    State is PlayerState.Paused,
+                    LastVoteSkipInfo,
+                    Queue.Count,
+                    Volume,
+                    RepeatMode
                 )
-                .WithButton(
-                    State == PlayerState.Paused ? "Resume" : "Pause",
-                    "pause",
-                    emote: State == PlayerState.Paused ? new Emoji("▶") : new Emoji("⏸"),
-                    row: 0
-                )
-                .WithButton("Stop", "stop", emote: new Emoji("⏹"), row: 0)
-                .WithButton(
-                    LastVoteSkipInfo is null
-                        ? "Skip"
-                        : $"Skip ({LastVoteSkipInfo.Votes.Count}/{Math.Floor(LastVoteSkipInfo.TotalUsers * LastVoteSkipInfo.Percentage)})",
-                    "skip",
-                    emote: new Emoji("⏭"),
-                    disabled: Queue.Count == 0,
-                    row: 0
-                )
-                .WithButton(
-                    "Favorite",
-                    "favorite",
-                    emote: new Emoji("❤️"),
-                    disabled: CurrentTrack is null,
-                    row: 0
-                )
-                .WithButton(
-                    "Down",
-                    "volumedown",
-                    emote: new Emoji("🔉"),
-                    disabled: Volume == 0,
-                    row: 1
-                )
-                /*.WithButton(LocalizedPlayer.Filter,
-                    "filter",
-                    emote: new Emoji("🎚"),
-                    row: 1
-                )*/
-                .WithButton(
-                    "Loop "
-                        + LoopMode switch
-                        {
-                            PlayerLoopMode.Track => "[Track]",
-                            PlayerLoopMode.Queue => "[Queue]",
-                            _ => "[Off]"
-                        },
-                    "loop",
-                    emote: new Emoji("🔁"),
-                    row: 1
-                )
-                .WithButton(
-                    "Up",
-                    "volumeup",
-                    emote: new Emoji("🔊"),
-                    disabled: Math.Abs(Volume - 1.0f) < 0.01f,
-                    row: 1
-                );
-        }
+                : new ComponentBuilder();
 
         if (NowPlayingMessage is null)
         {
@@ -218,11 +171,66 @@ public class ZeenoxPlayer : VoteLavalinkPlayer
         }
         else
         {
-            await NowPlayingMessage.ModifyAsync(x =>
+            var check = await TextChannel.GetMessageAsync(NowPlayingMessage.Id);
+            if (check is null)
             {
-                x.Embed = eb.Build();
-                x.Components = cb.Build();
-            });
+                NowPlayingMessage = await TextChannel.SendMessageAsync(
+                    embed: eb.Build(),
+                    components: cb.Build()
+                );
+            }
+            else
+            {
+                await NowPlayingMessage.ModifyAsync(x =>
+                {
+                    x.Embed = eb.Build();
+                    x.Components = cb.Build();
+                });
+            }
         }
+    }
+
+    protected override async ValueTask OnTrackStartedAsync(
+        LavalinkTrack track,
+        CancellationToken cancellationToken = new()
+    )
+    {
+        await base.OnTrackStartedAsync(track, cancellationToken);
+        await UpdateNowPlayingMessageAsync(track);
+    }
+
+    public Task DeleteMessageAsync()
+    {
+        return NowPlayingMessage is not null ? NowPlayingMessage.DeleteAsync() : Task.CompletedTask;
+    }
+
+    protected override ValueTask OnTrackEndedAsync(
+        LavalinkTrack track,
+        TrackEndReason endReason,
+        CancellationToken cancellationToken = new()
+    )
+    {
+        if (CurrentTrack is not null)
+            History.Add(CurrentTrack);
+        return base.OnTrackEndedAsync(track, endReason, cancellationToken);
+    }
+
+    public string ToJson()
+    {
+        return JsonConvert.SerializeObject(
+            new
+            {
+                TextChannelId = TextChannel.Id,
+                VoiceChannelId = VoiceChannel.Id,
+                TextChannelName = TextChannel.Name,
+                VoiceChannelName = VoiceChannel.Name,
+                IsPlaying = State is PlayerState.Playing,
+                IsPaused = State is PlayerState.Paused,
+                Queue,
+                History,
+                Volume,
+                RepeatMode
+            }
+        );
     }
 }

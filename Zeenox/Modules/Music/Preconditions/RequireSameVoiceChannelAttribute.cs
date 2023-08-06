@@ -6,7 +6,7 @@ namespace Zeenox.Modules.Music.Preconditions;
 
 public class RequireSameVoiceChannelAttribute : PreconditionAttribute
 {
-    public override Task<PreconditionResult> CheckRequirementsAsync(
+    public override async Task<PreconditionResult> CheckRequirementsAsync(
         IInteractionContext context,
         ICommandInfo commandInfo,
         IServiceProvider services
@@ -16,13 +16,11 @@ public class RequireSameVoiceChannelAttribute : PreconditionAttribute
         var voiceState = user as IVoiceState;
 
         var musicService = services.GetRequiredService<MusicService>();
-        var playerExists = musicService.TryGetPlayer(context.Guild.Id, out var player);
+        var (playerExists, player) = await musicService.TryGetPlayer(context.Guild.Id);
 
         if (playerExists && player?.VoiceChannelId != voiceState?.VoiceChannel.Id)
-            return Task.FromResult(
-                PreconditionResult.FromError("You must be in the same voice channel as the bot")
-            );
+            return PreconditionResult.FromError("You must be in the same voice channel as the bot");
 
-        return Task.FromResult(PreconditionResult.FromSuccess());
+        return PreconditionResult.FromSuccess();
     }
 }

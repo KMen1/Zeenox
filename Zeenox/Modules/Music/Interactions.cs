@@ -2,13 +2,14 @@
 
 namespace Zeenox.Modules.Music;
 
+[RequireContext(ContextType.Guild)]
 public class Interactions : MusicBase
 {
     [ComponentInteraction("volumeup")]
     public async Task VolumeUpAsync()
     {
         await DeferAsync(true).ConfigureAwait(false);
-        await MusicService.SetVolumeAsync(Context.Guild.Id, x => x += 10).ConfigureAwait(false);
+        await MusicService.OffsetVolumeAsync(Context.Guild.Id, 10).ConfigureAwait(false);
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
     }
 
@@ -16,7 +17,7 @@ public class Interactions : MusicBase
     public async Task VolumeDownAsync()
     {
         await DeferAsync(true).ConfigureAwait(false);
-        await MusicService.SetVolumeAsync(Context.Guild.Id, x => x -= 10).ConfigureAwait(false);
+        await MusicService.OffsetVolumeAsync(Context.Guild.Id, -10).ConfigureAwait(false);
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
     }
 
@@ -49,6 +50,30 @@ public class Interactions : MusicBase
     {
         await DeferAsync(true).ConfigureAwait(false);
         await MusicService.CycleLoopMode(Context.Guild.Id).ConfigureAwait(false);
+        await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
+    }
+
+    [ComponentInteraction("favorite")]
+    public async Task FavoriteAsync()
+    {
+        await DeferAsync(true).ConfigureAwait(false);
+        var (playerExists, player) = await MusicService.TryGetPlayer(Context.Guild.Id);
+        if (!playerExists || player?.CurrentTrack is null)
+        {
+            await FollowupAsync("There is no song playing right now.");
+            return;
+        }
+
+        await DatabaseService.UpdateUserAsync(
+            Context.User.Id,
+            x =>
+            {
+                if (x.FavoriteSongs.Contains(player.CurrentTrack.Identifier))
+                    x.FavoriteSongs.Remove(player.CurrentTrack.Identifier);
+                else
+                    x.FavoriteSongs.Add(player.CurrentTrack.Identifier);
+            }
+        );
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
     }
 }

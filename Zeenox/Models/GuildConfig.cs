@@ -32,7 +32,7 @@ public class MusicSettings
 {
     public bool IsExclusiveControl { get; set; }
     public bool IsDjOnly { get; set; }
-    public List<ulong> DjRoleIds { get; set; }
+    public List<ulong> DjRoleIds { get; set; } = null!;
     public ulong? RequestChannelId { get; set; }
     public int DefaultVolume { get; set; }
     public bool IsPlaylistAllowed { get; set; }

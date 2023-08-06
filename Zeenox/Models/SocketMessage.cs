@@ -1,4 +1,4 @@
-﻿using Lavalink4NET.Player;
+﻿using Lavalink4NET.Tracks;
 using Zeenox.Services;
 
 namespace Zeenox.Models;

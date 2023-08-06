@@ -49,7 +49,21 @@ public class WebSocketController : ControllerBase
 
         _musicService.AddWebSocket(message.GuildId, socket);
 
-        while (!receiveResult.CloseStatus.HasValue) { }
+        while (!receiveResult.CloseStatus.HasValue)
+        {
+            var position = await _musicService.GetPlayerPositionAsync(message.GuildId);
+            var messageToSend = new SocketMessage { Position = position };
+
+            await socket
+                .SendAsync(
+                    Encoding.UTF8.GetBytes(JsonSerializer.Serialize(messageToSend)),
+                    WebSocketMessageType.Text,
+                    true,
+                    CancellationToken.None
+                )
+                .ConfigureAwait(false);
+            await Task.Delay(1000);
+        }
 
         _musicService.RemoveWebSocket(message.GuildId, socket);
 

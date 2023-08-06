@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.Net.Http.Headers;
 using Zeenox.Services;
 
 namespace Zeenox.Controllers;
@@ -18,12 +19,17 @@ public class PlayerController : ControllerBase
     }
 
     [HttpGet(Name = "GetPlayerInfo")]
-    public IActionResult GetPlayerInfo(ulong guildId)
+    public async Task<IActionResult> GetPlayerInfo(ulong guildId)
     {
-        return Ok("Player");
+        var (playerExists, player) = await _musicService.TryGetPlayer(guildId);
+        if (!playerExists)
+        {
+            return NotFound();
+        }
+        return Content(player!.ToJson(), "application/json");
     }
 
-    [HttpGet("GetFavoriteTracks")]
+    [HttpGet(Name = "GetFavoriteTracks")]
     public async Task<IActionResult> GetFavoriteTracks(ulong userId)
     {
         var user = await _databaseService.GetUserAsync(userId);
@@ -59,15 +65,30 @@ public class PlayerController : ControllerBase
     }
 
     [HttpPost(Name = "Stop")]
-    public IActionResult Stop(ulong guildId, ulong userId)
+    public async Task<IActionResult> Stop(ulong guildId, ulong userId)
     {
-        return Ok("Stopped");
+        try
+        {
+            return Ok("Stopped");
+        }
+        catch (Exception e)
+        {
+            return Problem(e.StackTrace, e.Message);
+        }
     }
 
     [HttpPost(Name = "Skip")]
-    public IActionResult Skip(ulong guildId, ulong userId)
+    public async Task<IActionResult> Skip(ulong guildId, ulong userId)
     {
-        return Ok("Skipped");
+        try
+        {
+            await _musicService.SkipAsync(guildId);
+            return Ok();
+        }
+        catch (Exception e)
+        {
+            return Problem(e.StackTrace, e.Message);
+        }
     }
 
     [HttpPost(Name = "Seek")]

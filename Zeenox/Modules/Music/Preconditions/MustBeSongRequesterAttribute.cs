@@ -7,23 +7,23 @@ namespace Zeenox.Modules.Music.Preconditions;
 
 public class MustBeSongRequesterAttribute : PreconditionAttribute
 {
-    public override Task<PreconditionResult> CheckRequirementsAsync(
+    public override async Task<PreconditionResult> CheckRequirementsAsync(
         IInteractionContext context,
         ICommandInfo commandInfo,
         IServiceProvider services
     )
     {
         var musicService = services.GetRequiredService<MusicService>();
-        var playerExists = musicService.TryGetPlayer(context.Guild.Id, out var player);
+        var (playerExists, player) = await musicService.TryGetPlayer(context.Guild.Id);
 
-        if (
+        /*if (
             playerExists
             && ((TrackContext)player?.CurrentTrack?.Context!)?.Requester.Id != context.User.Id
         )
             return Task.FromResult(
                 PreconditionResult.FromError("You must be the requester of the song")
-            );
+            );*/
 
-        return Task.FromResult(PreconditionResult.FromSuccess());
+        return PreconditionResult.FromSuccess();
     }
 }

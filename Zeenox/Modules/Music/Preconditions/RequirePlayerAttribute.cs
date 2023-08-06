@@ -6,19 +6,17 @@ namespace Zeenox.Modules.Music.Preconditions;
 
 public class RequirePlayerAttribute : PreconditionAttribute
 {
-    public override Task<PreconditionResult> CheckRequirementsAsync(
+    public override async Task<PreconditionResult> CheckRequirementsAsync(
         IInteractionContext context,
         ICommandInfo commandInfo,
         IServiceProvider services
     )
     {
         var musicService = services.GetRequiredService<MusicService>();
-        var playerExists = musicService.TryGetPlayer(context.Guild.Id, out _);
+        var (playerExists, _) = await musicService.TryGetPlayer(context.Guild.Id);
 
-        return Task.FromResult(
-            !playerExists
-                ? PreconditionResult.FromError("The player does not exist")
-                : PreconditionResult.FromSuccess()
-        );
+        return !playerExists
+            ? PreconditionResult.FromError("The player does not exist")
+            : PreconditionResult.FromSuccess();
     }
 }
