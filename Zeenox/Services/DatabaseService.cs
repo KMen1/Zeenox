@@ -28,11 +28,11 @@ public class DatabaseService
 
     private async Task AddGuildConfigAsync(ulong guildId)
     {
-        var cursor = await _configs.FindAsync(x => x.GuildId == guildId);
-        if (await cursor.AnyAsync())
+        var cursor = await _configs.FindAsync(x => x.GuildId == guildId).ConfigureAwait(false);
+        if (await cursor.AnyAsync().ConfigureAwait(false))
             return;
         var config = new GuildConfig(guildId);
-        await _configs.InsertOneAsync(config);
+        await _configs.InsertOneAsync(config).ConfigureAwait(false);
     }
 
     public async Task<GuildConfig> GetGuildConfigAsync(ulong guildId)
@@ -40,27 +40,27 @@ public class DatabaseService
         if (_cache.TryGetValue(guildId, out GuildConfig? config))
             return config!;
 
-        await AddGuildConfigAsync(guildId);
-        var cursor = await _configs.FindAsync(x => x.GuildId == guildId);
-        var result = await cursor.FirstOrDefaultAsync();
+        await AddGuildConfigAsync(guildId).ConfigureAwait(false);
+        var cursor = await _configs.FindAsync(x => x.GuildId == guildId).ConfigureAwait(false);
+        var result = await cursor.FirstOrDefaultAsync().ConfigureAwait(false);
         _cache.Set(guildId, result);
         return result;
     }
 
     public async Task UpdateGuildConfigAsync(ulong guildId, Action<GuildConfig> action)
     {
-        var previous = await GetGuildConfigAsync(guildId);
+        var previous = await GetGuildConfigAsync(guildId).ConfigureAwait(false);
         action(previous);
-        await _configs.ReplaceOneAsync(x => x.GuildId == guildId, previous);
+        await _configs.ReplaceOneAsync(x => x.GuildId == guildId, previous).ConfigureAwait(false);
     }
 
     private async Task AddUserAsync(ulong userId)
     {
-        var cursor = await _users.FindAsync(x => x.UserId == userId);
-        if (await cursor.AnyAsync())
+        var cursor = await _users.FindAsync(x => x.UserId == userId).ConfigureAwait(false);
+        if (await cursor.AnyAsync().ConfigureAwait(false))
             return;
         var user = new User(userId);
-        await _users.InsertOneAsync(user);
+        await _users.InsertOneAsync(user).ConfigureAwait(false);
     }
 
     public async Task<User> GetUserAsync(ulong userId)
@@ -68,17 +68,18 @@ public class DatabaseService
         if (_cache.TryGetValue(userId, out User? user))
             return user!;
 
-        await AddUserAsync(userId);
-        var cursor = await _users.FindAsync(x => x.UserId == userId);
-        var result = await cursor.FirstOrDefaultAsync();
+        await AddUserAsync(userId).ConfigureAwait(false);
+        var cursor = await _users.FindAsync(x => x.UserId == userId).ConfigureAwait(false);
+        var result = await cursor.FirstOrDefaultAsync().ConfigureAwait(false);
         _cache.Set(userId, result);
         return result;
     }
 
     public async Task UpdateUserAsync(ulong userId, Action<User> action)
     {
-        var previous = await GetUserAsync(userId);
+        var previous = await GetUserAsync(userId).ConfigureAwait(false);
         action(previous);
-        await _users.ReplaceOneAsync(x => x.UserId == userId, previous);
+        await _users.ReplaceOneAsync(x => x.UserId == userId, previous).ConfigureAwait(false);
+        _cache.Set(userId, previous);
     }
 }

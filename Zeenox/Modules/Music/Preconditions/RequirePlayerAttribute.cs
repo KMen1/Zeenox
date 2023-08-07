@@ -13,7 +13,7 @@ public class RequirePlayerAttribute : PreconditionAttribute
     )
     {
         var musicService = services.GetRequiredService<MusicService>();
-        var (playerExists, _) = await musicService.TryGetPlayer(context.Guild.Id);
+        var (playerExists, _) = await musicService.TryGetPlayer(context.Guild.Id).ConfigureAwait(false);
 
         return !playerExists
             ? PreconditionResult.FromError("The player does not exist")

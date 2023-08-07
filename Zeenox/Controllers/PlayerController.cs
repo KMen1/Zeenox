@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.Net.Http.Headers;
 using Zeenox.Services;
 
 namespace Zeenox.Controllers;
@@ -21,7 +20,7 @@ public class PlayerController : ControllerBase
     [HttpGet(Name = "GetPlayerInfo")]
     public async Task<IActionResult> GetPlayerInfo(ulong guildId)
     {
-        var (playerExists, player) = await _musicService.TryGetPlayer(guildId);
+        var (playerExists, player) = await _musicService.TryGetPlayer(guildId).ConfigureAwait(false);
         if (!playerExists)
         {
             return NotFound();
@@ -32,7 +31,7 @@ public class PlayerController : ControllerBase
     [HttpGet(Name = "GetFavoriteTracks")]
     public async Task<IActionResult> GetFavoriteTracks(ulong userId)
     {
-        var user = await _databaseService.GetUserAsync(userId);
+        var user = await _databaseService.GetUserAsync(userId).ConfigureAwait(false);
         return Ok(user.FavoriteSongs);
     }
 
@@ -41,7 +40,7 @@ public class PlayerController : ControllerBase
     {
         try
         {
-            await _musicService.PauseOrResumeAsync(guildId);
+            await _musicService.PauseOrResumeAsync(guildId).ConfigureAwait(false);
             return Ok();
         }
         catch (Exception e)
@@ -55,7 +54,7 @@ public class PlayerController : ControllerBase
     {
         try
         {
-            await _musicService.PauseOrResumeAsync(guildId);
+            await _musicService.PauseOrResumeAsync(guildId).ConfigureAwait(false);
             return Ok();
         }
         catch (Exception e)
@@ -82,7 +81,7 @@ public class PlayerController : ControllerBase
     {
         try
         {
-            await _musicService.SkipAsync(guildId);
+            await _musicService.SkipAsync(guildId).ConfigureAwait(false);
             return Ok();
         }
         catch (Exception e)
@@ -96,7 +95,7 @@ public class PlayerController : ControllerBase
     {
         try
         {
-            await _musicService.SeekAsync(guildId, position);
+            await _musicService.SeekAsync(guildId, position).ConfigureAwait(false);
             return Ok();
         }
         catch (Exception e)
@@ -110,7 +109,7 @@ public class PlayerController : ControllerBase
     {
         try
         {
-            await _musicService.SetVolumeAsync(guildId, volume);
+            await _musicService.SetVolumeAsync(guildId, volume).ConfigureAwait(false);
             return Ok();
         }
         catch (Exception e)
@@ -124,7 +123,7 @@ public class PlayerController : ControllerBase
     {
         try
         {
-            await _musicService.CycleLoopMode(guildId);
+            await _musicService.CycleLoopMode(guildId).ConfigureAwait(false);
             return Ok();
         }
         catch (Exception e)
@@ -138,7 +137,7 @@ public class PlayerController : ControllerBase
     {
         try
         {
-            await _musicService.ShuffleQueueAsync(guildId);
+            await _musicService.ShuffleQueueAsync(guildId).ConfigureAwait(false);
             return Ok();
         }
         catch (Exception e)

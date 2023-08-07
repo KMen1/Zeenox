@@ -34,11 +34,11 @@ public class InteractionHandler : DiscordClientService
         _interactionService.SlashCommandExecuted += HandleSlashCommandResultAsync;
         _interactionService.ComponentCommandExecuted += HandleComponentCommandResultAsync;
 
-        await Client.WaitForReadyAsync(stoppingToken);
+        await Client.WaitForReadyAsync(stoppingToken).ConfigureAwait(false);
         await Client.SetGameAsync(
             _config.GetSection("Discord")["Activity"],
             type: ActivityType.Listening
-        );
+        ).ConfigureAwait(false);
         await _interactionService
             .AddModulesAsync(Assembly.GetEntryAssembly(), _provider)
             .ConfigureAwait(false);

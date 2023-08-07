@@ -2,9 +2,7 @@ using Discord;
 using Discord.Addons.Hosting;
 using Discord.Interactions;
 using Discord.WebSocket;
-using Lavalink4NET;
-using Lavalink4NET.Clients;
-using Lavalink4NET.DiscordNet;
+using Lavalink4NET.Artwork;
 using Lavalink4NET.Extensions;
 using Lavalink4NET.InactivityTracking.Extensions;
 using Lavalink4NET.Lyrics.Extensions;
@@ -60,9 +58,11 @@ builder.Host
                 .AddLavalink()
                 .AddInactivityTracking()
                 .AddLyrics()
+                .AddSingleton<IArtworkService, ArtworkService>()
                 .Configure<InactivityTrackingOptions>(x =>
                 {
                     x.DisconnectDelay = TimeSpan.FromMinutes(3);
+                    x.TrackInactivity = true;
                 })
                 .AddLogging(x => x.AddConsole().SetMinimumLevel(LogLevel.Trace))
                 .AddSingleton<IMongoClient>(

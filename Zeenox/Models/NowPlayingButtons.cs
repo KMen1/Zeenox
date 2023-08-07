@@ -7,15 +7,14 @@ namespace Zeenox.Models;
 public class NowPlayingButtons : ComponentBuilder
 {
     public NowPlayingButtons(
-        int historyCount,
+        ITrackQueue queue,
         bool isPaused,
         UserVoteSkipInfo? voteSkipInfo,
-        int queueCount,
         float volume,
         TrackRepeatMode loopMode
     )
     {
-        WithButton("Back", "previous", emote: new Emoji("⏮"), disabled: historyCount == 0, row: 0);
+        WithButton("Back", "previous", emote: new Emoji("⏮"), disabled: queue is { HasHistory: false, History.Count: 0 }, row: 0);
         WithButton(
             isPaused ? "Resume" : "Pause",
             "pause",
@@ -29,7 +28,7 @@ public class NowPlayingButtons : ComponentBuilder
                 : $"Skip ({voteSkipInfo.Votes.Length}/{Math.Floor(voteSkipInfo.TotalUsers * voteSkipInfo.Percentage)})",
             "skip",
             emote: new Emoji("⏭"),
-            disabled: queueCount == 0,
+            disabled: queue.Count == 0,
             row: 0
         );
         WithButton("Down", "volumedown", emote: new Emoji("🔉"), disabled: volume == 0, row: 1);
@@ -49,7 +48,7 @@ public class NowPlayingButtons : ComponentBuilder
             "Up",
             "volumeup",
             emote: new Emoji("🔊"),
-            disabled: Math.Abs(volume - 1.0f) < 0.01f,
+            disabled: Math.Abs(volume - 0.5f) < 0.01f,
             row: 1
         );
         WithButton("Favorite", "favorite", emote: new Emoji("❤️"), row: 1);

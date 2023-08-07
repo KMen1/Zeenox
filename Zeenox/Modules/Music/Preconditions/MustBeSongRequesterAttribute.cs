@@ -1,6 +1,5 @@
 ﻿using Discord;
 using Discord.Interactions;
-using Zeenox.Models;
 using Zeenox.Services;
 
 namespace Zeenox.Modules.Music.Preconditions;
@@ -14,7 +13,7 @@ public class MustBeSongRequesterAttribute : PreconditionAttribute
     )
     {
         var musicService = services.GetRequiredService<MusicService>();
-        var (playerExists, player) = await musicService.TryGetPlayer(context.Guild.Id);
+        var (playerExists, player) = await musicService.TryGetPlayer(context.Guild.Id).ConfigureAwait(false);
 
         /*if (
             playerExists

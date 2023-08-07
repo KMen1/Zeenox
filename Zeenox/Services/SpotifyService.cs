@@ -18,7 +18,7 @@ public class SpotifyService
     {
         if (_memoryCache.TryGetValue(id, out string? coverUrl))
             return coverUrl;
-        var track = await _spotifyClient.Tracks.Get(id);
+        var track = await _spotifyClient.Tracks.Get(id).ConfigureAwait(false);
         coverUrl = track.Album.Images[0].Url;
         _memoryCache.Set(id, coverUrl, TimeSpan.FromMinutes(5));
 

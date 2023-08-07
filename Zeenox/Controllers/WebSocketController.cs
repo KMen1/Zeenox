@@ -27,7 +27,7 @@ public class WebSocketController : ControllerBase
             using var webSocket = await HttpContext.WebSockets
                 .AcceptWebSocketAsync()
                 .ConfigureAwait(false);
-            await SetupSocketAsync(webSocket);
+            await SetupSocketAsync(webSocket).ConfigureAwait(false);
         }
         else
         {
@@ -51,7 +51,7 @@ public class WebSocketController : ControllerBase
 
         while (!receiveResult.CloseStatus.HasValue)
         {
-            var position = await _musicService.GetPlayerPositionAsync(message.GuildId);
+            var position = await _musicService.GetPlayerPositionAsync(message.GuildId).ConfigureAwait(false);
             var messageToSend = new SocketMessage { Position = position };
 
             await socket
@@ -62,7 +62,7 @@ public class WebSocketController : ControllerBase
                     CancellationToken.None
                 )
                 .ConfigureAwait(false);
-            await Task.Delay(1000);
+            await Task.Delay(1000).ConfigureAwait(false);
         }
 
         _musicService.RemoveWebSocket(message.GuildId, socket);

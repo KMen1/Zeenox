@@ -22,8 +22,10 @@ public class NowPlayingEmbed : EmbedBuilder
         Url = track.Uri?.ToString() ?? "";
         Color = new Color(31, 31, 31);
         ImageUrl = coverUrl;
-        //AddField("Added By", context.Requester.Mention, true);
-        AddField("🕐 Length", $"`{track.Duration:mm\\:ss}`", true);
+        //Footer = new EmbedFooterBuilder()
+        //    .WithIconUrl()
+        //    .WithText($"Requested by {}");
+        AddField("🕐 Length", $"`{track.Duration:hh\\:mm\\:ss}`", true);
         AddField("🔊 Volume", $"`{Math.Round(volume * 200)}%`", true);
         if (queue.Count > 0)
         {
@@ -37,7 +39,7 @@ public class NowPlayingEmbed : EmbedBuilder
                     qTrack.SourceName == "spotify"
                         ? $"{qTrack.Author} - {qTrack.Title}"
                         : qTrack.Title;
-                sb.AppendLine($"`{counter}. {nextTitle} ({qTrack.Duration:mm\\:ss})`");
+                sb.AppendLine($"`{counter}. {nextTitle}`");
                 counter++;
             }
 
@@ -46,7 +48,7 @@ public class NowPlayingEmbed : EmbedBuilder
 
             AddField("📃 Queue", $"`{queue.Count}`", true);
             AddField(
-                "⏭ Next Songs",
+                "⏭️ Next Songs",
                 $"{sb.ToString().TrimEnd('\r', '\n')}",
                 true
             );
