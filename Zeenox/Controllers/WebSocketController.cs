@@ -20,14 +20,14 @@ public class WebSocketController : ControllerBase
     }
 
     [HttpGet(Name = "CreateWebSocket")]
-    public async Task CreateWebSocket()
+    public async Task CreateWebSocket(ulong guildId, ulong userId)
     {
         if (HttpContext.WebSockets.IsWebSocketRequest)
         {
             using var webSocket = await HttpContext.WebSockets
                 .AcceptWebSocketAsync()
                 .ConfigureAwait(false);
-            await SetupSocketAsync(webSocket).ConfigureAwait(false);
+            await SetupSocketAsync(webSocket, guildId, userId).ConfigureAwait(false);
         }
         else
         {
@@ -35,7 +35,7 @@ public class WebSocketController : ControllerBase
         }
     }
 
-    private async Task SetupSocketAsync(WebSocket socket)
+    private async Task SetupSocketAsync(WebSocket socket, ulong guildId, ulong userId)
     {
         var buffer = new byte[1024 * 4];
         var receiveResult = await socket
@@ -45,13 +45,15 @@ public class WebSocketController : ControllerBase
         var rawData = Encoding.UTF8.GetString(
             new ArraySegment<byte>(buffer, 0, receiveResult.Count)
         );
-        var message = JsonSerializer.Deserialize<InitSocketMessage>(rawData)!;
+        //var message = JsonSerializer.Deserialize<InitSocketMessage>(rawData)!;
 
-        _musicService.AddWebSocket(message.GuildId, socket);
+        _musicService.AddWebSocket(guildId, socket);
 
         while (!receiveResult.CloseStatus.HasValue)
         {
-            var position = await _musicService.GetPlayerPositionAsync(message.GuildId).ConfigureAwait(false);
+            var position = await _musicService
+                .GetPlayerPositionAsync(guildId)
+                .ConfigureAwait(false);
             var messageToSend = new SocketMessage { Position = position };
 
             await socket
@@ -65,7 +67,7 @@ public class WebSocketController : ControllerBase
             await Task.Delay(1000).ConfigureAwait(false);
         }
 
-        _musicService.RemoveWebSocket(message.GuildId, socket);
+        _musicService.RemoveWebSocket(guildId, socket);
 
         await socket
             .CloseAsync(

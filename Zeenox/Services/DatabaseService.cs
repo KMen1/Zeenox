@@ -43,7 +43,7 @@ public class DatabaseService
         await AddGuildConfigAsync(guildId).ConfigureAwait(false);
         var cursor = await _configs.FindAsync(x => x.GuildId == guildId).ConfigureAwait(false);
         var result = await cursor.FirstOrDefaultAsync().ConfigureAwait(false);
-        _cache.Set(guildId, result);
+        _cache.Set(guildId, result, TimeSpan.FromMinutes(5));
         return result;
     }
 
@@ -52,6 +52,8 @@ public class DatabaseService
         var previous = await GetGuildConfigAsync(guildId).ConfigureAwait(false);
         action(previous);
         await _configs.ReplaceOneAsync(x => x.GuildId == guildId, previous).ConfigureAwait(false);
+        _cache.Remove(guildId);
+        _cache.Set(guildId, previous, TimeSpan.FromMinutes(5));
     }
 
     private async Task AddUserAsync(ulong userId)
@@ -70,8 +72,8 @@ public class DatabaseService
 
         await AddUserAsync(userId).ConfigureAwait(false);
         var cursor = await _users.FindAsync(x => x.UserId == userId).ConfigureAwait(false);
-        var result = await cursor.FirstOrDefaultAsync().ConfigureAwait(false);
-        _cache.Set(userId, result);
+        var result = await cursor.FirstAsync().ConfigureAwait(false);
+        _cache.Set(userId, result, TimeSpan.FromMinutes(5));
         return result;
     }
 
@@ -80,6 +82,7 @@ public class DatabaseService
         var previous = await GetUserAsync(userId).ConfigureAwait(false);
         action(previous);
         await _users.ReplaceOneAsync(x => x.UserId == userId, previous).ConfigureAwait(false);
-        _cache.Set(userId, previous);
+        _cache.Remove(userId);
+        _cache.Set(userId, previous, TimeSpan.FromMinutes(5));
     }
 }

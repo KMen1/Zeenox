@@ -12,7 +12,7 @@ using Lavalink4NET.Players;
 using Lavalink4NET.Players.Queued;
 using Lavalink4NET.Rest.Entities.Tracks;
 using Lavalink4NET.Tracks;
-using Zeenox.Models;
+using SocketMessage = Zeenox.Models.SocketMessage;
 
 namespace Zeenox.Services;
 
@@ -48,7 +48,7 @@ public class MusicService
             return;
         var player = (ZeenoxPlayer)eventArgs.Player;
         await player.DeleteMessageAsync().ConfigureAwait(false);
-        await player.StopAsync(true).ConfigureAwait(false);
+        //await player.StopAsync(true).ConfigureAwait(false);
     }
 
     public async Task<(bool playerExists, ZeenoxPlayer? player)> TryGetPlayer(ulong guildId)
@@ -59,7 +59,7 @@ public class MusicService
         return (player is not null, player);
     }
 
-    public async Task<ZeenoxPlayer> GetOrCreatePlayer(
+    private async Task<ZeenoxPlayer> GetOrCreatePlayer(
         ulong guildId,
         ITextChannel textChannel,
         IVoiceChannel voiceChannel,
@@ -125,15 +125,13 @@ public class MusicService
                 }
             )
             .ConfigureAwait(false);
-        if (!results.HasMatches)
+        if (!results.HasMatches || results.Tracks.Length == 0)
             return false;
 
-        if (results.Tracks.Length == 0)
-            return false;
-
-        var tracks = results.Tracks;
         var player = await GetOrCreatePlayer(guildId, textChannel, voiceChannel)
             .ConfigureAwait(false);
+
+        var tracks = results.Tracks;
 
         /*foreach (var track in tracks)
         {
@@ -160,12 +158,6 @@ public class MusicService
         IEnumerable<LavalinkTrack> tracksEnumerable
     )
     {
-        var favorites = (
-            await _databaseService.GetUserAsync(requester.Id).ConfigureAwait(false)
-        ).FavoriteSongs;
-        if (favorites.Count == 0)
-            return;
-
         var player = await GetOrCreatePlayer(guildId, textChannel, voiceChannel)
             .ConfigureAwait(false);
         var tracks = tracksEnumerable.ToArray();

@@ -10,10 +10,12 @@ public class Commands : MusicBase
 {
     [RequireVoiceChannel]
     [SlashCommand("play", "Plays a song")]
-    public async Task PlayAsync(string query)
+    public async Task PlayAsync(
+        [Summary("query"), Autocomplete(typeof(SearchAutocompleteHandler))] string query
+    )
     {
         await DeferAsync(true).ConfigureAwait(false);
-        await MusicService
+        var result = await MusicService
             .PlayAsync(
                 Context.Guild.Id,
                 (ITextChannel)Context.Channel,
@@ -22,7 +24,20 @@ public class Commands : MusicBase
                 query
             )
             .ConfigureAwait(false);
-        await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
+        if (result)
+        {
+            await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
+            return;
+        }
+
+        await FollowupAsync(
+                embed: new EmbedBuilder()
+                    .WithColor(Color.Red)
+                    .WithTitle($"No matches found for: {query}")
+                    .Build(),
+                ephemeral: true
+            )
+            .ConfigureAwait(false);
     }
 
     [RequireVoiceChannel]

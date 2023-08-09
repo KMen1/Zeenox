@@ -35,10 +35,9 @@ public class InteractionHandler : DiscordClientService
         _interactionService.ComponentCommandExecuted += HandleComponentCommandResultAsync;
 
         await Client.WaitForReadyAsync(stoppingToken).ConfigureAwait(false);
-        await Client.SetGameAsync(
-            _config.GetSection("Discord")["Activity"],
-            type: ActivityType.Listening
-        ).ConfigureAwait(false);
+        await Client
+            .SetGameAsync(_config.GetSection("Discord")["Activity"], type: ActivityType.Listening)
+            .ConfigureAwait(false);
         await _interactionService
             .AddModulesAsync(Assembly.GetEntryAssembly(), _provider)
             .ConfigureAwait(false);
@@ -70,7 +69,7 @@ public class InteractionHandler : DiscordClientService
             return Task.CompletedTask;
 
         var reason = GetErrorReason(result);
-        return SendErrorMessageAsync(reason, context.Interaction);
+        return SendErrorMessageAsync(reason, context.Interaction, result.ErrorReason);
     }
 
     private Task HandleInteractionAsync(SocketInteraction interaction)
@@ -85,16 +84,24 @@ public class InteractionHandler : DiscordClientService
         {
             InteractionCommandError.UnmetPrecondition => result.ErrorReason,
             InteractionCommandError.UnknownCommand
-                => "Unknown command, please restart your discord client",
+                => "Unknown command, please restart your discord client!",
             _ => "Something went wrong, please try again!"
         };
     }
 
-    private static Task SendErrorMessageAsync(string reason, IDiscordInteraction interaction)
+    private static Task SendErrorMessageAsync(
+        string reason,
+        IDiscordInteraction interaction,
+        string? description = null
+    )
     {
-        // reason.ToEmbed(Color.Red)
+        var embed = new EmbedBuilder()
+            .WithColor(Color.Red)
+            .WithTitle(reason)
+            .WithDescription($"```{description}```")
+            .Build();
         return interaction.HasResponded
-            ? interaction.FollowupAsync(reason, ephemeral: true)
-            : interaction.RespondAsync(reason, ephemeral: true);
+            ? interaction.FollowupAsync(embed: embed, ephemeral: true)
+            : interaction.RespondAsync(embed: embed, ephemeral: true);
     }
 }

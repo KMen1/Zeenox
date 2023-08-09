@@ -12,7 +12,7 @@
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Discord.Addons.Hosting" Version="5.2.0" />
-        <PackageReference Include="Discord.Net" Version="3.11.0" />
+        <PackageReference Include="Discord.Net" Version="3.10.0" />
         <PackageReference Include="Lavalink4NET" Version="4.0.0-alpha.2" />
         <PackageReference Include="Lavalink4NET.Artwork" Version="4.0.0-alpha.2" />
         <PackageReference Include="Lavalink4NET.Discord.NET" Version="4.0.0-alpha.2" />
@@ -28,5 +28,6 @@
         <PackageReference Include="SpotifyAPI.Web" Version="7.0.0" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
     </ItemGroup>
+
 
 </Project>
