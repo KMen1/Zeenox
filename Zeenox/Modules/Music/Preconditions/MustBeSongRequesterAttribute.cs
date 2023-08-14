@@ -12,10 +12,10 @@ public class MustBeSongRequesterAttribute : PreconditionAttribute
         IServiceProvider services
     )
     {
-        var musicService = services.GetRequiredService<MusicService>();
-        var (playerExists, player) = await musicService.TryGetPlayer(context.Guild.Id).ConfigureAwait(false);
+        /*var musicService = services.GetRequiredService<MusicService>();
+        var player = await musicService.TryGetPlayerAsync(context.Guild.Id).ConfigureAwait(false);
 
-        /*if (
+        if (
             playerExists
             && ((TrackContext)player?.CurrentTrack?.Context!)?.Requester.Id != context.User.Id
         )

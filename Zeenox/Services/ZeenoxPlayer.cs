@@ -16,8 +16,8 @@ public sealed class ZeenoxPlayer : VoteLavalinkPlayer
     {
         TextChannel = properties.Options.Value.TextChannel;
         VoiceChannel = properties.Options.Value.VoiceChannel;
-        SpotifyService = properties.Options.Value.SpotifyService;
-        ArtworkService = properties.Options.Value.ArtworkService;
+        SpotifyService = properties.ServiceProvider!.GetRequiredService<SpotifyService>();
+        ArtworkService = properties.ServiceProvider!.GetRequiredService<IArtworkService>();
     }
 
     private SpotifyService SpotifyService { get; }
@@ -25,7 +25,6 @@ public sealed class ZeenoxPlayer : VoteLavalinkPlayer
     private ITextChannel TextChannel { get; }
     private IVoiceChannel VoiceChannel { get; }
     private IUserMessage? NowPlayingMessage { get; set; }
-    private UserVoteSkipInfo? LastVoteSkipInfo { get; set; }
 
     public async Task PlayAsync(IEnumerable<LavalinkTrack> tracksEnumerable)
     {
@@ -64,7 +63,7 @@ public sealed class ZeenoxPlayer : VoteLavalinkPlayer
         await PlayAsync(track, false).ConfigureAwait(false);
     }
 
-    public override async ValueTask<UserVoteSkipInfo> VoteAsync(
+    /*public override async ValueTask<UserVoteSkipInfo> VoteAsync(
         ulong userId,
         float percentage = 0.5f
     )
@@ -79,7 +78,7 @@ public sealed class ZeenoxPlayer : VoteLavalinkPlayer
     {
         LastVoteSkipInfo = null;
         base.ClearVotes();
-    }
+    }*/
 
     public override async ValueTask PauseAsync(CancellationToken cancellationToken = new())
     {
@@ -187,16 +186,9 @@ public sealed class ZeenoxPlayer : VoteLavalinkPlayer
 
     private ComponentBuilder GetButtons(LavalinkTrack? track)
     {
-        if (track is null)
-            return new ComponentBuilder();
-
-        return new NowPlayingButtons(
-            Queue,
-            State is PlayerState.Paused,
-            LastVoteSkipInfo,
-            Volume,
-            RepeatMode
-        );
+        return track is null
+            ? new ComponentBuilder()
+            : new NowPlayingButtons(Queue, State is PlayerState.Paused, Volume, RepeatMode);
     }
 
     protected override async ValueTask OnTrackStartedAsync(
@@ -217,7 +209,7 @@ public sealed class ZeenoxPlayer : VoteLavalinkPlayer
         await UpdateMessageAsync().ConfigureAwait(false);
     }
 
-    public Task DeleteMessageAsync()
+    private Task DeleteMessageAsync()
     {
         return NowPlayingMessage?.DeleteAsync() ?? Task.CompletedTask;
     }
@@ -238,5 +230,11 @@ public sealed class ZeenoxPlayer : VoteLavalinkPlayer
                 RepeatMode
             }
         );
+    }
+
+    protected override async ValueTask DisposeAsyncCore()
+    {
+        await DeleteMessageAsync().ConfigureAwait(false);
+        await base.DisposeAsyncCore().ConfigureAwait(false);
     }
 }

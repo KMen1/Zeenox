@@ -20,8 +20,8 @@ public class PlayerController : ControllerBase
     [HttpGet(Name = "GetPlayerInfo")]
     public async Task<IActionResult> GetPlayerInfo(ulong guildId)
     {
-        var (playerExists, player) = await _musicService.TryGetPlayer(guildId).ConfigureAwait(false);
-        if (!playerExists)
+        var player = await _musicService.TryGetPlayerAsync(guildId).ConfigureAwait(false);
+        if (player is null)
         {
             return NotFound();
         }

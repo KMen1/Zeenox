@@ -1,12 +1,12 @@
 ﻿using Discord.Interactions;
+using Lavalink4NET.Players;
+using Lavalink4NET.Players.Queued;
 using Zeenox.Modules.Music.Preconditions;
 
 namespace Zeenox.Modules.Music;
 
 [RateLimit]
 [RequireContext(ContextType.Guild)]
-[RequirePlayer]
-[RequireSameVoiceChannel]
 public class Interactions : MusicBase
 {
     [ComponentInteraction("volumeup")]
@@ -29,7 +29,18 @@ public class Interactions : MusicBase
     public async Task PauseAsync()
     {
         await DeferAsync(true).ConfigureAwait(false);
-        await MusicService.PauseOrResumeAsync(Context.Guild.Id).ConfigureAwait(false);
+        var player = await TryGetPlayerAsync().ConfigureAwait(false);
+        if (player is null)
+            return;
+
+        if (player.State is PlayerState.Paused)
+        {
+            await player.ResumeAsync().ConfigureAwait(false);
+        }
+        else
+        {
+            await player.PauseAsync().ConfigureAwait(false);
+        }
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
     }
 
@@ -37,7 +48,11 @@ public class Interactions : MusicBase
     public async Task SkipAsync()
     {
         await DeferAsync(true).ConfigureAwait(false);
-        await MusicService.SkipAsync(Context.Guild.Id).ConfigureAwait(false);
+        var player = await TryGetPlayerAsync().ConfigureAwait(false);
+        if (player is null)
+            return;
+
+        await player.SkipAsync().ConfigureAwait(false);
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
     }
 
@@ -45,7 +60,11 @@ public class Interactions : MusicBase
     public async Task PreviousAsync()
     {
         await DeferAsync(true).ConfigureAwait(false);
-        await MusicService.RewindAsync(Context.Guild.Id).ConfigureAwait(false);
+        var player = await TryGetPlayerAsync().ConfigureAwait(false);
+        if (player is null)
+            return;
+
+        await player.RewindAsync().ConfigureAwait(false);
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
     }
 
@@ -53,7 +72,14 @@ public class Interactions : MusicBase
     public async Task LoopAsync()
     {
         await DeferAsync(true).ConfigureAwait(false);
-        await MusicService.CycleLoopMode(Context.Guild.Id).ConfigureAwait(false);
+        var player = await TryGetPlayerAsync().ConfigureAwait(false);
+        if (player is null)
+            return;
+
+        var shouldDisable = !Enum.IsDefined(typeof(TrackRepeatMode), player.RepeatMode + 1);
+        await player
+            .SetLoopModeAsync(shouldDisable ? 0 : player.RepeatMode + 1)
+            .ConfigureAwait(false);
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
     }
 
@@ -61,32 +87,38 @@ public class Interactions : MusicBase
     public async Task StopAsync()
     {
         await DeferAsync(true).ConfigureAwait(false);
-        await MusicService.StopAsync(Context.Guild.Id).ConfigureAwait(false);
+        var player = await TryGetPlayerAsync().ConfigureAwait(false);
+        if (player is null)
+            return;
+
+        await player.StopAsync().ConfigureAwait(false);
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
     }
-    
+
     [ComponentInteraction("favorite")]
     public async Task FavoriteAsync()
     {
         await DeferAsync(true).ConfigureAwait(false);
-        var (playerExists, player) = await MusicService.TryGetPlayer(Context.Guild.Id).ConfigureAwait(false);
-        if (!playerExists || player?.CurrentTrack is null)
+        var player = await MusicService.TryGetPlayerAsync(Context.Guild.Id).ConfigureAwait(false);
+        if (player?.CurrentTrack is null)
         {
             await FollowupAsync("There is no song playing right now.").ConfigureAwait(false);
             return;
         }
 
         var trackString = player.CurrentTrack.ToString();
-        await DatabaseService.UpdateUserAsync(
-            Context.User.Id,
-            x =>
-            {
-                if (x.FavoriteSongs.Contains(trackString))
-                    x.FavoriteSongs.Remove(trackString);
-                else
-                    x.FavoriteSongs.Add(trackString);
-            }
-        ).ConfigureAwait(false);
+        await DatabaseService
+            .UpdateUserAsync(
+                Context.User.Id,
+                x =>
+                {
+                    if (x.FavoriteSongs.Contains(trackString))
+                        x.FavoriteSongs.Remove(trackString);
+                    else
+                        x.FavoriteSongs.Add(trackString);
+                }
+            )
+            .ConfigureAwait(false);
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
     }
 }

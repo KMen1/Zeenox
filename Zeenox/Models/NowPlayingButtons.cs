@@ -9,12 +9,17 @@ public class NowPlayingButtons : ComponentBuilder
     public NowPlayingButtons(
         ITrackQueue queue,
         bool isPaused,
-        UserVoteSkipInfo? voteSkipInfo,
         float volume,
         TrackRepeatMode loopMode
     )
     {
-        WithButton("Back", "previous", emote: new Emoji("⏮"), disabled: queue is { HasHistory: false, History.Count: 0 }, row: 0);
+        WithButton(
+            "Back",
+            "previous",
+            emote: new Emoji("⏮"),
+            disabled: queue is { HasHistory: false, History.Count: 0 },
+            row: 0
+        );
         WithButton(
             isPaused ? "Resume" : "Pause",
             "pause",
@@ -22,15 +27,7 @@ public class NowPlayingButtons : ComponentBuilder
             row: 0
         );
         WithButton("Stop", "stop", emote: new Emoji("⏹"), row: 0);
-        WithButton(
-            voteSkipInfo is null
-                ? "Skip"
-                : $"Skip ({voteSkipInfo.Votes.Length}/{Math.Floor(voteSkipInfo.TotalUsers * voteSkipInfo.Percentage)})",
-            "skip",
-            emote: new Emoji("⏭"),
-            disabled: queue.Count == 0,
-            row: 0
-        );
+        WithButton("Skip", "skip", emote: new Emoji("⏭"), disabled: queue.Count == 0, row: 0);
         WithButton("Down", "volumedown", emote: new Emoji("🔉"), disabled: volume == 0, row: 1);
         WithButton(
             "Loop "
