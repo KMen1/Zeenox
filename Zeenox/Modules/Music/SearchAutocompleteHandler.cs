@@ -7,6 +7,13 @@ namespace Zeenox.Modules.Music;
 
 public class SearchAutocompleteHandler : AutocompleteHandler
 {
+    private readonly IAudioService _audioService;
+    
+    public SearchAutocompleteHandler(IAudioService audioService)
+    {
+        _audioService = audioService;
+    }
+    
     public override async Task<AutocompletionResult> GenerateSuggestionsAsync(
         IInteractionContext context,
         IAutocompleteInteraction autocompleteInteraction,
@@ -16,15 +23,14 @@ public class SearchAutocompleteHandler : AutocompleteHandler
     {
         if (autocompleteInteraction.Data.Current.Value is not string query || query.Length < 3)
             return AutocompletionResult.FromSuccess();
-        
+
         if (Uri.IsWellFormedUriString(query, UriKind.Absolute))
             return AutocompletionResult.FromSuccess();
 
-        var audioService = services.GetRequiredService<IAudioService>();
-        var results = await audioService.Tracks
+        var results = await _audioService.Tracks
             .LoadTracksAsync(
-                $"spsearch:{query}",
-                new TrackLoadOptions { SearchMode = TrackSearchMode.None, StrictSearch = false }
+                query,
+                new TrackLoadOptions { SearchMode = TrackSearchMode.Spotify, StrictSearch = true }
             )
             .ConfigureAwait(false);
 
@@ -36,6 +42,7 @@ public class SearchAutocompleteHandler : AutocompleteHandler
         var options = tracks
             .Select(x => new AutocompleteResult($"{x.Author} - {x.Title}", x.Uri!.ToString()))
             .ToArray();
+
         return AutocompletionResult.FromSuccess(options);
     }
 }

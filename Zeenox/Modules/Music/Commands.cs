@@ -45,9 +45,9 @@ public class Commands : MusicBase
         }
 
         var tracks = results.Tracks;
-        if (results.IsPlaylist)
+        if (/*results.IsPlaylist*/false)
         {
-            await player.PlayAsync(tracks).ConfigureAwait(false);
+            await player.PlayAsync(tracks.ToArray()).ConfigureAwait(false);
         }
         else
         {
@@ -59,7 +59,7 @@ public class Commands : MusicBase
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
     }
 
-    [SlashCommand("play-fav", "Plays your favorites songs")]
+    [SlashCommand("play-fav", "Plays your favorite songs")]
     public async Task PlayFavAsync()
     {
         await DeferAsync(true).ConfigureAwait(false);
@@ -133,7 +133,7 @@ public class Commands : MusicBase
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
     }
 
-    [SlashCommand("reverse", "Reverses the queue")]
+    [SlashCommand("reverse", "Reverses the order of the queue")]
     public async Task ReverseAsync()
     {
         await DeferAsync(true).ConfigureAwait(false);

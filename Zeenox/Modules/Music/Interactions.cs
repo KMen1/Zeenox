@@ -13,7 +13,13 @@ public class Interactions : MusicBase
     public async Task VolumeUpAsync()
     {
         await DeferAsync(true).ConfigureAwait(false);
-        await MusicService.OffsetVolumeAsync(Context.Guild.Id, 10).ConfigureAwait(false);
+        var player = await TryGetPlayerAsync().ConfigureAwait(false);
+        if (player is null)
+            return;
+
+        var volume = (int)(player.Volume * 100);
+        volume += 10;
+        await player.SetVolumeAsync(volume / 100f).ConfigureAwait(false);
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
     }
 
@@ -21,7 +27,13 @@ public class Interactions : MusicBase
     public async Task VolumeDownAsync()
     {
         await DeferAsync(true).ConfigureAwait(false);
-        await MusicService.OffsetVolumeAsync(Context.Guild.Id, -10).ConfigureAwait(false);
+        var player = await TryGetPlayerAsync().ConfigureAwait(false);
+        if (player is null)
+            return;
+
+        var volume = (int)(player.Volume * 100);
+        volume -= 10;
+        await player.SetVolumeAsync(volume / 100f).ConfigureAwait(false);
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
     }
 
@@ -99,7 +111,7 @@ public class Interactions : MusicBase
     public async Task FavoriteAsync()
     {
         await DeferAsync(true).ConfigureAwait(false);
-        var player = await MusicService.TryGetPlayerAsync(Context.Guild.Id).ConfigureAwait(false);
+        var player = await TryGetPlayerAsync().ConfigureAwait(false);
         if (player?.CurrentTrack is null)
         {
             await FollowupAsync("There is no song playing right now.").ConfigureAwait(false);

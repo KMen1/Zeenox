@@ -1,5 +1,5 @@
 ﻿using Discord;
-using Lavalink4NET.Artwork;
+using Lavalink4NET.Integrations.Lavasrc;
 using Lavalink4NET.Players;
 using Lavalink4NET.Players.Queued;
 using Lavalink4NET.Players.Vote;
@@ -16,12 +16,8 @@ public sealed class ZeenoxPlayer : VoteLavalinkPlayer
     {
         TextChannel = properties.Options.Value.TextChannel;
         VoiceChannel = properties.Options.Value.VoiceChannel;
-        SpotifyService = properties.ServiceProvider!.GetRequiredService<SpotifyService>();
-        ArtworkService = properties.ServiceProvider!.GetRequiredService<IArtworkService>();
     }
-
-    private SpotifyService SpotifyService { get; }
-    private IArtworkService ArtworkService { get; }
+    
     private ITextChannel TextChannel { get; }
     private IVoiceChannel VoiceChannel { get; }
     private IUserMessage? NowPlayingMessage { get; set; }
@@ -129,7 +125,7 @@ public sealed class ZeenoxPlayer : VoteLavalinkPlayer
 
     private async Task UpdateMessageAsync(LavalinkTrack? track = null)
     {
-        var eb = await GetEmbedBuilder(track ?? CurrentTrack).ConfigureAwait(false);
+        var eb = GetEmbedBuilder(track ?? CurrentTrack);
         var cb = GetButtons(track ?? CurrentTrack);
 
         if (
@@ -153,25 +149,7 @@ public sealed class ZeenoxPlayer : VoteLavalinkPlayer
         }
     }
 
-    private async Task<string?> GetCoverUrl(LavalinkTrack? track)
-    {
-        if (track is null)
-            return null;
-
-        string? coverUrl;
-        if (track.SourceName == "spotify")
-        {
-            coverUrl = await SpotifyService.GetCoverUrl(track.Identifier).ConfigureAwait(false);
-        }
-        else
-        {
-            coverUrl = (await ArtworkService.ResolveAsync(track).ConfigureAwait(false))?.ToString();
-        }
-
-        return coverUrl;
-    }
-
-    private async Task<EmbedBuilder> GetEmbedBuilder(LavalinkTrack? track)
+    private EmbedBuilder GetEmbedBuilder(LavalinkTrack? track)
     {
         if (track is null)
         {
@@ -180,7 +158,7 @@ public sealed class ZeenoxPlayer : VoteLavalinkPlayer
             );
         }
 
-        var coverUrl = await GetCoverUrl(track).ConfigureAwait(false);
+        var coverUrl = new ExtendedLavalinkTrack(track).ArtworkUri?.ToString();
         return new NowPlayingEmbed(track, Volume, Queue, coverUrl);
     }
 
@@ -191,25 +169,22 @@ public sealed class ZeenoxPlayer : VoteLavalinkPlayer
             : new NowPlayingButtons(Queue, State is PlayerState.Paused, Volume, RepeatMode);
     }
 
-    protected override async ValueTask OnTrackStartedAsync(
+    protected override async ValueTask NotifyTrackStartedAsync(
         LavalinkTrack track,
         CancellationToken cancellationToken = new()
     )
     {
-        await base.OnTrackStartedAsync(track, cancellationToken).ConfigureAwait(false);
+        await base.NotifyTrackStartedAsync(track, cancellationToken).ConfigureAwait(false);
         await UpdateMessageAsync(track).ConfigureAwait(false);
     }
 
-    public override async ValueTask StopAsync(
-        bool disconnect = false,
-        CancellationToken cancellationToken = new()
-    )
+    public override async ValueTask StopAsync(CancellationToken cancellationToken = new())
     {
-        await base.StopAsync(disconnect, cancellationToken).ConfigureAwait(false);
+        await base.StopAsync(cancellationToken).ConfigureAwait(false);
         await UpdateMessageAsync().ConfigureAwait(false);
     }
 
-    private Task DeleteMessageAsync()
+    public Task DeleteMessageAsync()
     {
         return NowPlayingMessage?.DeleteAsync() ?? Task.CompletedTask;
     }
@@ -230,11 +205,5 @@ public sealed class ZeenoxPlayer : VoteLavalinkPlayer
                 RepeatMode
             }
         );
-    }
-
-    protected override async ValueTask DisposeAsyncCore()
-    {
-        await DeleteMessageAsync().ConfigureAwait(false);
-        await base.DisposeAsyncCore().ConfigureAwait(false);
     }
 }

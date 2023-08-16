@@ -14,7 +14,6 @@ public class MusicBase : ModuleBase
     public IAudioService AudioService { get; set; } = null!;
     public MusicService MusicService { get; set; } = null!;
     public DatabaseService DatabaseService { get; set; } = null!;
-    public IVoiceState? VoiceState => Context.User as IVoiceState;
 
     protected async ValueTask<ZeenoxPlayer?> TryGetPlayerAsync(
         bool allowConnect = false,
@@ -26,11 +25,12 @@ public class MusicBase : ModuleBase
     {
         cancellationToken.ThrowIfCancellationRequested();
 
+        var voiceState = Context.User as IVoiceState;
         var factory = new PlayerFactory<ZeenoxPlayer, ZeenoxPlayerOptions>(
             (properties, _) =>
             {
                 properties.Options.Value.TextChannel = (ITextChannel)Context.Channel;
-                properties.Options.Value.VoiceChannel = VoiceState!.VoiceChannel;
+                properties.Options.Value.VoiceChannel = voiceState!.VoiceChannel;
                 return ValueTask.FromResult(new ZeenoxPlayer(properties));
             }
         );
@@ -50,7 +50,7 @@ public class MusicBase : ModuleBase
         var result = await AudioService.Players
             .RetrieveAsync(
                 Context.Guild.Id,
-                VoiceState?.VoiceChannel?.Id,
+                voiceState!.VoiceChannel?.Id,
                 playerFactory: factory,
                 options: new OptionsWrapper<ZeenoxPlayerOptions>(
                     new ZeenoxPlayerOptions

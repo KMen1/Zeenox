@@ -33,6 +33,8 @@ public class MusicService
         if (!eventArgs.ShouldStop)
             return;
         var player = (ZeenoxPlayer)eventArgs.Player;
+        await player.DeleteMessageAsync().ConfigureAwait(false);
+        await player.DisconnectAsync().ConfigureAwait(false);
         await player.DisposeAsync().ConfigureAwait(false);
     }
 
