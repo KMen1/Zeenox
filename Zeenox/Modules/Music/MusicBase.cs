@@ -24,7 +24,6 @@ public class MusicBase : ModuleBase
     )
     {
         cancellationToken.ThrowIfCancellationRequested();
-
         var voiceState = Context.User as IVoiceState;
         var factory = new PlayerFactory<ZeenoxPlayer, ZeenoxPlayerOptions>(
             (properties, _) =>

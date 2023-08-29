@@ -8,7 +8,7 @@ using IResult = Discord.Interactions.IResult;
 
 namespace Zeenox.Services;
 
-public class InteractionHandler : DiscordClientService
+public sealed class InteractionHandler : DiscordClientService
 {
     private readonly InteractionService _interactionService;
     private readonly IServiceProvider _provider;
@@ -52,7 +52,7 @@ public class InteractionHandler : DiscordClientService
         IResult result
     )
     {
-        if (result.IsSuccess)
+        if (result.IsSuccess || result.Error == InteractionCommandError.UnknownCommand)
             return Task.CompletedTask;
 
         var reason = GetErrorReason(result);
@@ -65,7 +65,7 @@ public class InteractionHandler : DiscordClientService
         IResult result
     )
     {
-        if (result.IsSuccess)
+        if (result.IsSuccess || result.Error == InteractionCommandError.UnknownCommand)
             return Task.CompletedTask;
 
         var reason = GetErrorReason(result);
@@ -95,13 +95,12 @@ public class InteractionHandler : DiscordClientService
         string? description = null
     )
     {
-        var embed = new EmbedBuilder()
-            .WithColor(Color.Red)
-            .WithTitle(reason)
-            .WithDescription($"```{description}```")
-            .Build();
+        var embed = new EmbedBuilder().WithColor(Color.Red).WithTitle(reason);
+        if (description is not null)
+            embed.WithDescription($"```{description}```");
+
         return interaction.HasResponded
-            ? interaction.FollowupAsync(embed: embed, ephemeral: true)
-            : interaction.RespondAsync(embed: embed, ephemeral: true);
+            ? interaction.FollowupAsync(embed: embed.Build(), ephemeral: true)
+            : interaction.RespondAsync(embed: embed.Build(), ephemeral: true);
     }
 }

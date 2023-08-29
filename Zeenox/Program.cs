@@ -2,15 +2,13 @@ using Discord;
 using Discord.Addons.Hosting;
 using Discord.Interactions;
 using Discord.WebSocket;
-using Lavalink4NET.Artwork;
+using Fergun.Interactive;
 using Lavalink4NET.Extensions;
 using Lavalink4NET.InactivityTracking.Extensions;
 using Lavalink4NET.Lyrics.Extensions;
-using Lavalink4NET.Tracking;
 using Microsoft.AspNetCore.Mvc.Versioning;
 using MongoDB.Driver;
 using Serilog;
-using SpotifyAPI.Web;
 using Zeenox.Services;
 
 Log.Logger = new LoggerConfiguration().Enrich
@@ -47,7 +45,7 @@ builder.Host
             config.DefaultRunMode = RunMode.Async;
             config.LogLevel = LogSeverity.Verbose;
             config.UseCompiledLambda = true;
-            //config.LocalizationManager = new JsonLocalizationManager("Resources", "DCLocalization");
+            config.LocalizationManager = new JsonLocalizationManager("/", "CommandLocale");
         }
     )
     .ConfigureServices(
@@ -56,33 +54,26 @@ builder.Host
             services
                 .AddHostedService<InteractionHandler>()
                 .AddLavalink()
-                .AddInactivityTracking()
-                .AddLyrics()
-                .AddSingleton<IArtworkService, ArtworkService>()
-                .Configure<InactivityTrackingOptions>(x =>
+                /*.ConfigureLavalink(x =>
                 {
-                    x.DisconnectDelay = TimeSpan.FromMinutes(3);
-                    x.TrackInactivity = true;
+                    x.BaseAddress = new Uri($"http://{lavaHost}:{lavaPort}");
+                    x.WebSocketUri = new Uri($"ws://{lavaHost}:{lavaPort}");
+                    x.Passphrase = lavaPassword;
+                })*/
+                .AddInactivityTracking()
+                .ConfigureInactivityTracking(x =>
+                {
+                    x.DefaultTimeout = TimeSpan.FromMinutes(3);
                 })
+                .AddLyrics()
                 .AddLogging(x => x.AddConsole().SetMinimumLevel(LogLevel.Trace))
                 .AddSingleton<IMongoClient>(
                     new MongoClient(
                         context.Configuration.GetSection("MongoDB")["ConnectionString"]!
                     )
                 )
-                .AddSingleton(
-                    new SpotifyClient(
-                        SpotifyClientConfig
-                            .CreateDefault()
-                            .WithAuthenticator(
-                                new ClientCredentialsAuthenticator(
-                                    context.Configuration.GetSection("Spotify")["CLIENT_ID"]!,
-                                    context.Configuration.GetSection("Spotify")["CLIENT_SECRET"]!
-                                )
-                            )
-                    )
-                )
-                .AddSingleton<SpotifyService>()
+                .AddSingleton(new InteractiveConfig { DefaultTimeout = TimeSpan.FromMinutes(5) }) // Optional config
+                .AddSingleton<InteractiveService>()
                 .AddSingleton<DatabaseService>()
                 .AddSingleton<MusicService>()
                 .AddMemoryCache();

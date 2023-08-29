@@ -5,7 +5,8 @@ using Zeenox.Modules.Music.Preconditions;
 
 namespace Zeenox.Modules.Music;
 
-[RateLimit]
+[RateLimit(5, 2)]
+[RequireWhitelistedRole]
 [RequireContext(ContextType.Guild)]
 public class Interactions : MusicBase
 {

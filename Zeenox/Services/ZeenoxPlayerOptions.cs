@@ -1,5 +1,4 @@
 ﻿using Discord;
-using Lavalink4NET.Artwork;
 using Lavalink4NET.Players.Vote;
 
 namespace Zeenox.Services;

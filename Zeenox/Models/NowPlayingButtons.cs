@@ -1,6 +1,5 @@
 ﻿using Discord;
 using Lavalink4NET.Players.Queued;
-using Lavalink4NET.Players.Vote;
 
 namespace Zeenox.Models;
 

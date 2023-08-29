@@ -1,10 +1,11 @@
 ﻿using Discord;
 using Discord.Interactions;
+using Zeenox.Models;
 using Zeenox.Services;
 
 namespace Zeenox.Modules.Music.Preconditions;
 
-public class MustBeSongRequesterAttribute : PreconditionAttribute
+public class RequireSongRequesterAttribute : PreconditionAttribute
 {
     public override async Task<PreconditionResult> CheckRequirementsAsync(
         IInteractionContext context,
@@ -12,16 +13,18 @@ public class MustBeSongRequesterAttribute : PreconditionAttribute
         IServiceProvider services
     )
     {
-        /*var musicService = services.GetRequiredService<MusicService>();
+        var musicService = services.GetRequiredService<MusicService>();
         var player = await musicService.TryGetPlayerAsync(context.Guild.Id).ConfigureAwait(false);
 
         if (
-            playerExists
-            && ((TrackContext)player?.CurrentTrack?.Context!)?.Requester.Id != context.User.Id
+            player is not null
+            && (player.CurrentItem as ZeenoxTrackItem)?.RequestedBy.Id != context.User.Id
         )
-            return Task.FromResult(
-                PreconditionResult.FromError("You must be the requester of the song")
-            );*/
+        {
+            return PreconditionResult.FromError(
+                "You don't have permission to perfrom this action."
+            );
+        }
 
         return PreconditionResult.FromSuccess();
     }

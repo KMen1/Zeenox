@@ -1,0 +1,58 @@
+﻿{
+  "play": {
+    "name": "play",
+    "description": "Zeneszám lejátszása. A bot automatikusan belép a hangcsatornába, ha nincs benne.",
+    "query": {
+      "name": "query",
+      "description": "Zene címe vagy linkje (támogatott: Spotify, YouTube, SoundCloud, BandCamp)."
+    }
+  },
+  "play-fav": {
+    "name": "play-fav",
+    "description": "Az összes kedvenc zeneszámodat lejátssza. A bot automatikusan belép a hangcsatornába, ha nincs benne."
+  },
+  "volume": {
+    "name": "volume",
+    "description": "Hangerő beállítása.",
+    "volume": {
+      "name": "volume",
+      "description": "A kívánt hangerő 1 és 100 között."
+    }
+  },
+  "shuffle": {
+    "name": "shuffle",
+    "description": "Megkeveri a várólistát."
+  },
+  "distinct": {
+    "name": "distinct",
+    "description": "Eltávolítja a többször szereplő zeneszámokat a várólistáról és csak egy példányt hagy meg belőlük."
+  },
+  "clear": {
+    "name": "clear",
+    "description": "Törli a várólistát."
+  },
+  "reverse": {
+    "name": "reverse",
+    "description": "Megfordítja a várólista sorrendjét."
+  },
+  "lyrics": {
+    "name": "lyrics",
+    "description": "A jelenleg lejátszott zeneszám szövegének lekérése."
+  },
+  "skipto": {
+    "name": "skipto",
+    "description": "A megadott sorszámú zeneszámra ugrik a várólistán.",
+    "index": {
+      "name": "index",
+      "description": "A zeneszám sorszáma a várólistán."
+    }
+  },
+  "remove": {
+    "name": "remove",
+    "description": "Eltávolít egy zeneszámot a várólistáról.",
+    "index": {
+      "name": "index",
+      "description": "A zeneszám sorszáma a várólistán."
+    }
+  }
+}

@@ -1,9 +1,7 @@
 ﻿using Discord;
-using Lavalink4NET.Integrations.Lavasrc;
 using Lavalink4NET.Players;
 using Lavalink4NET.Players.Queued;
 using Lavalink4NET.Players.Vote;
-using Lavalink4NET.Tracks;
 using Newtonsoft.Json;
 using Zeenox.Models;
 
@@ -17,35 +15,20 @@ public sealed class ZeenoxPlayer : VoteLavalinkPlayer
         TextChannel = properties.Options.Value.TextChannel;
         VoiceChannel = properties.Options.Value.VoiceChannel;
     }
-    
+
     private ITextChannel TextChannel { get; }
     private IVoiceChannel VoiceChannel { get; }
     private IUserMessage? NowPlayingMessage { get; set; }
+    private List<string> Tracks { get; } = new();
 
-    public async Task PlayAsync(IEnumerable<LavalinkTrack> tracksEnumerable)
+    public async Task PlayAsync(IEnumerable<ZeenoxTrackItem> tracksEnumerable)
     {
         var tracks = tracksEnumerable.ToArray();
         if (tracks.Length == 0)
             return;
 
-        await PlayAsync(tracks[0]).ConfigureAwait(false);
-        await Queue
-            .AddRangeAsync(
-                tracks.Select(x => new TrackQueueItem(new TrackReference(x))).Skip(1).ToList()
-            )
-            .ConfigureAwait(false);
-        await UpdateMessageAsync().ConfigureAwait(false);
-    }
-
-    public override async ValueTask PlayAsync(
-        TrackReference trackReference,
-        TrackPlayProperties properties = new(),
-        CancellationToken cancellationToken = new()
-    )
-    {
-        await base.PlayAsync(trackReference, properties, cancellationToken).ConfigureAwait(false);
-        if (NowPlayingMessage is not null)
-            await UpdateMessageAsync().ConfigureAwait(false);
+        await Queue.AddRangeAsync(tracks[1..]).ConfigureAwait(false);
+        await PlayAsync(tracks[0], false).ConfigureAwait(false);
     }
 
     public async Task RewindAsync()
@@ -55,26 +38,8 @@ public sealed class ZeenoxPlayer : VoteLavalinkPlayer
 
         var track = Queue.History[^1];
         await Queue.History.RemoveAtAsync(Queue.History.Count - 1).ConfigureAwait(false);
-
         await PlayAsync(track, false).ConfigureAwait(false);
     }
-
-    /*public override async ValueTask<UserVoteSkipInfo> VoteAsync(
-        ulong userId,
-        float percentage = 0.5f
-    )
-    {
-        var result = await base.VoteAsync(userId, percentage).ConfigureAwait(false);
-        LastVoteSkipInfo = result;
-        await UpdateMessageAsync().ConfigureAwait(false);
-        return result;
-    }
-
-    public override void ClearVotes()
-    {
-        LastVoteSkipInfo = null;
-        base.ClearVotes();
-    }*/
 
     public override async ValueTask PauseAsync(CancellationToken cancellationToken = new())
     {
@@ -114,6 +79,32 @@ public sealed class ZeenoxPlayer : VoteLavalinkPlayer
         await UpdateMessageAsync().ConfigureAwait(false);
     }
 
+    public async Task SkipToAsync(int index)
+    {
+        if (index < 0 || index >= Queue.Count)
+            return;
+
+        var track = Queue[index];
+        await Queue.RemoveRangeAsync(0, index + 1).ConfigureAwait(false);
+        await PlayAsync(track, false).ConfigureAwait(false);
+        await UpdateMessageAsync().ConfigureAwait(false);
+    }
+
+    public async Task RemoveAsync(int index)
+    {
+        if (index < 0 || index >= Queue.Count)
+            return;
+
+        await Queue.RemoveAtAsync(index).ConfigureAwait(false);
+        await UpdateMessageAsync().ConfigureAwait(false);
+    }
+
+    public async Task ShuffleAsync()
+    {
+        await Queue.ShuffleAsync().ConfigureAwait(false);
+        await UpdateMessageAsync().ConfigureAwait(false);
+    }
+
     public override async ValueTask SetVolumeAsync(
         float volume,
         CancellationToken cancellationToken = new()
@@ -123,10 +114,36 @@ public sealed class ZeenoxPlayer : VoteLavalinkPlayer
         await UpdateMessageAsync().ConfigureAwait(false);
     }
 
-    private async Task UpdateMessageAsync(LavalinkTrack? track = null)
+    protected override async ValueTask NotifyTrackStartedAsync(
+        ITrackQueueItem queueItem,
+        CancellationToken cancellationToken = new()
+    )
     {
-        var eb = GetEmbedBuilder(track ?? CurrentTrack);
-        var cb = GetButtons(track ?? CurrentTrack);
+        var track = queueItem.Track;
+        Tracks.Add($"[{track!.Title}]({track.Uri})");
+        await UpdateMessageAsync(queueItem as ZeenoxTrackItem).ConfigureAwait(false);
+    }
+
+    protected override async ValueTask NotifyTrackEnqueuedAsync(
+        ITrackQueueItem queueItem,
+        int position,
+        CancellationToken cancellationToken = new()
+    )
+    {
+        await UpdateMessageAsync().ConfigureAwait(false);
+    }
+
+    public override async ValueTask StopAsync(CancellationToken cancellationToken = new())
+    {
+        await base.StopAsync(cancellationToken).ConfigureAwait(false);
+        await UpdateMessageAsync().ConfigureAwait(false);
+    }
+
+    private async Task UpdateMessageAsync(ZeenoxTrackItem? track = null)
+    {
+        var actualTrack = track ?? CurrentItem as ZeenoxTrackItem;
+        var eb = GetEmbedBuilder(actualTrack);
+        var cb = GetButtons(actualTrack);
 
         if (
             NowPlayingMessage is null
@@ -149,7 +166,7 @@ public sealed class ZeenoxPlayer : VoteLavalinkPlayer
         }
     }
 
-    private EmbedBuilder GetEmbedBuilder(LavalinkTrack? track)
+    private EmbedBuilder GetEmbedBuilder(ZeenoxTrackItem? track)
     {
         if (track is null)
         {
@@ -158,35 +175,22 @@ public sealed class ZeenoxPlayer : VoteLavalinkPlayer
             );
         }
 
-        var coverUrl = new ExtendedLavalinkTrack(track).ArtworkUri?.ToString();
-        return new NowPlayingEmbed(track, Volume, Queue, coverUrl);
+        return new NowPlayingEmbed(track, Volume, Queue);
     }
 
-    private ComponentBuilder GetButtons(LavalinkTrack? track)
+    private ComponentBuilder GetButtons(ZeenoxTrackItem? track)
     {
         return track is null
             ? new ComponentBuilder()
             : new NowPlayingButtons(Queue, State is PlayerState.Paused, Volume, RepeatMode);
     }
 
-    protected override async ValueTask NotifyTrackStartedAsync(
-        LavalinkTrack track,
-        CancellationToken cancellationToken = new()
-    )
+    public Task SendSongListMessageAsync()
     {
-        await base.NotifyTrackStartedAsync(track, cancellationToken).ConfigureAwait(false);
-        await UpdateMessageAsync(track).ConfigureAwait(false);
-    }
-
-    public override async ValueTask StopAsync(CancellationToken cancellationToken = new())
-    {
-        await base.StopAsync(cancellationToken).ConfigureAwait(false);
-        await UpdateMessageAsync().ConfigureAwait(false);
-    }
-
-    public Task DeleteMessageAsync()
-    {
-        return NowPlayingMessage?.DeleteAsync() ?? Task.CompletedTask;
+        return NowPlayingMessage?.ModifyAsync(x =>
+            {
+                x.Embeds = Tracks.Distinct().ToEmbeds("Listing songs that were played", 10);
+            }) ?? Task.CompletedTask;
     }
 
     public string ToJson()

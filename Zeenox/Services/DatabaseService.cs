@@ -1,26 +1,20 @@
 ﻿using Discord.WebSocket;
 using Microsoft.Extensions.Caching.Memory;
 using MongoDB.Driver;
+using Serilog;
 using Zeenox.Models;
 
 namespace Zeenox.Services;
 
-public class DatabaseService
+public sealed class DatabaseService
 {
     private readonly IMemoryCache _cache;
     private readonly IMongoCollection<GuildConfig> _configs;
     private readonly IMongoCollection<User> _users;
-    private readonly DiscordSocketClient _client;
 
-    public DatabaseService(
-        IMongoClient mongoClient,
-        IConfiguration config,
-        IMemoryCache cache,
-        DiscordSocketClient client
-    )
+    public DatabaseService(IMongoClient mongoClient, IConfiguration config, IMemoryCache cache)
     {
         _cache = cache;
-        _client = client;
         var database = mongoClient.GetDatabase(config.GetSection("MongoDB")["Database"]!);
         _configs = database.GetCollection<GuildConfig>("configs");
         _users = database.GetCollection<User>("users");
@@ -33,6 +27,7 @@ public class DatabaseService
             return;
         var config = new GuildConfig(guildId);
         await _configs.InsertOneAsync(config).ConfigureAwait(false);
+        Log.Logger.Information("Added guild config {GuildId}", guildId);
     }
 
     public async Task<GuildConfig> GetGuildConfigAsync(ulong guildId)
@@ -54,6 +49,7 @@ public class DatabaseService
         await _configs.ReplaceOneAsync(x => x.GuildId == guildId, previous).ConfigureAwait(false);
         _cache.Remove(guildId);
         _cache.Set(guildId, previous, TimeSpan.FromMinutes(5));
+        Log.Logger.Information("Updated guild config {GuildId}", guildId);
     }
 
     private async Task AddUserAsync(ulong userId)
@@ -63,6 +59,7 @@ public class DatabaseService
             return;
         var user = new User(userId);
         await _users.InsertOneAsync(user).ConfigureAwait(false);
+        Log.Logger.Information("Added user {UserId}", userId);
     }
 
     public async Task<User> GetUserAsync(ulong userId)
@@ -84,5 +81,6 @@ public class DatabaseService
         await _users.ReplaceOneAsync(x => x.UserId == userId, previous).ConfigureAwait(false);
         _cache.Remove(userId);
         _cache.Set(userId, previous, TimeSpan.FromMinutes(5));
+        Log.Logger.Information("Updated user {UserId}", userId);
     }
 }

@@ -1,52 +1,44 @@
 ﻿using System.Text;
 using Discord;
+using Lavalink4NET.Integrations.Lavasrc;
 using Lavalink4NET.Players.Queued;
-using Lavalink4NET.Tracks;
 
 namespace Zeenox.Models;
 
 public class NowPlayingEmbed : EmbedBuilder
 {
-    public NowPlayingEmbed(
-        LavalinkTrack track,
-        float volume,
-        ITrackQueue queue,
-        string? coverUrl = ""
-    )
+    public NowPlayingEmbed(ZeenoxTrackItem trackItem, float volume, ITrackQueue queue)
     {
-        //var context = (TrackContext)track.Context!;
+        var track = trackItem.Reference.Track!;
+        var coverUrl = new ExtendedLavalinkTrack(track).ArtworkUri?.ToString();
+
         Author = new EmbedAuthorBuilder()
             .WithName("NOW PLAYING")
-            .WithIconUrl("https://bestanimations.com/media/discs/895872755cd-animated-gif-9.gif");
-        Title = track.SourceName == "spotify" ? $"{track.Author} - {track.Title}" : track.Title;
+            .WithIconUrl("https://im2.ezgif.com/tmp/ezgif-2-81f6555576.gif");
+        Title = track.GetTitle();
         Url = track.Uri?.ToString() ?? "";
         Color = new Color(31, 31, 31);
         ImageUrl = coverUrl;
-        //Footer = new EmbedFooterBuilder()
-        //    .WithIconUrl()
-        //    .WithText($"Requested by {}");
-        AddField("🕐 Length", $"`{track.Duration:hh\\:mm\\:ss}`", true);
+        Footer = new EmbedFooterBuilder()
+            .WithIconUrl(trackItem.RequestedBy.GetAvatarUrl())
+            .WithText($"Requested by {trackItem.RequestedBy.Username}");
+        AddField("🕐 Length", $"`{track.Duration.ToTimeString()}`", true);
         AddField("🔊 Volume", $"`{Math.Round(volume * 200)}%`", true);
-        if (queue.Count > 0)
+        if (queue.Count <= 0)
+            return;
+        var sb = new StringBuilder();
+        var counter = 1;
+        var tracks = queue.Take(5);
+        foreach (var queueItem in tracks)
         {
-            var sb = new StringBuilder();
-            var counter = 1;
-            var tracks = queue.Take(5);
-            foreach (var queuedTrack in tracks)
-            {
-                var qTrack = queuedTrack.Track.Track!;
-                var nextTitle =
-                    qTrack.SourceName == "spotify"
-                        ? $"{qTrack.Author} - {qTrack.Title}"
-                        : qTrack.Title;
-                sb.AppendLine($"`{counter}. {nextTitle}`");
-                counter++;
-            }
-
-            if (queue.Count > 5)
-                sb.AppendLine($"`and {queue.Count - 5} more...`");
-
-            AddField("📃 Queue", $"{sb.ToString().TrimEnd('\r', '\n')}");
+            var nextTrack = queueItem.Track!;
+            sb.AppendLine($"`{counter}. {nextTrack.GetTitle()}`");
+            counter++;
         }
+
+        if (queue.Count > 5)
+            sb.AppendLine($"`and {queue.Count - 5} more...`");
+
+        AddField("📃 Queue", $"{sb.ToString().TrimEnd('\r', '\n')}");
     }
 }
