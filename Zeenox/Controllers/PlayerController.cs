@@ -17,15 +17,15 @@ public class PlayerController : ControllerBase
         _databaseService = databaseService;
     }
 
-    [HttpGet(Name = "GetPlayerInfo")]
-    public async Task<IActionResult> GetPlayerInfo(ulong guildId)
+    [HttpGet(Name = "GetPlayer")]
+    public async Task<IActionResult> GetPlayer(ulong guildId)
     {
         var player = await _musicService.TryGetPlayerAsync(guildId).ConfigureAwait(false);
         if (player is null)
         {
             return NotFound();
         }
-        return Content(player!.ToJson(), "application/json");
+        return Content(player.ToJson(), "application/json");
     }
 
     [HttpGet(Name = "GetFavoriteTracks")]
@@ -33,6 +33,13 @@ public class PlayerController : ControllerBase
     {
         var user = await _databaseService.GetUserAsync(userId).ConfigureAwait(false);
         return Ok(user.FavoriteSongs);
+    }
+
+    [HttpGet(Name = "GetLyrics")]
+    public async Task<IActionResult> GetLyrics(ulong guildId)
+    {
+        var lyrics = await _musicService.GetLyricsAsync(guildId).ConfigureAwait(false);
+        return lyrics is null ? NotFound() : Ok(lyrics);
     }
 
     [HttpPost(Name = "Pause")]
@@ -66,28 +73,40 @@ public class PlayerController : ControllerBase
     [HttpPost(Name = "Stop")]
     public async Task<IActionResult> Stop(ulong guildId, ulong userId)
     {
-        try
+        var player = await _musicService.TryGetPlayerAsync(guildId).ConfigureAwait(false);
+        if (player is null)
         {
-            return Ok("Stopped");
+            return NotFound();
         }
-        catch (Exception e)
-        {
-            return Problem(e.StackTrace, e.Message);
-        }
+
+        await player.StopAsync().ConfigureAwait(false);
+        return Ok();
     }
 
     [HttpPost(Name = "Skip")]
     public async Task<IActionResult> Skip(ulong guildId, ulong userId)
     {
-        try
+        var player = await _musicService.TryGetPlayerAsync(guildId).ConfigureAwait(false);
+        if (player is null)
         {
-            await _musicService.SkipAsync(guildId).ConfigureAwait(false);
-            return Ok();
+            return NotFound();
         }
-        catch (Exception e)
+
+        await player.SkipAsync().ConfigureAwait(false);
+        return Ok();
+    }
+
+    [HttpPost(Name = "Rewind")]
+    public async Task<IActionResult> Rewind(ulong guildId, ulong userId)
+    {
+        var player = await _musicService.TryGetPlayerAsync(guildId).ConfigureAwait(false);
+        if (player is null)
         {
-            return Problem(e.StackTrace, e.Message);
+            return NotFound();
         }
+
+        await player.RewindAsync().ConfigureAwait(false);
+        return Ok();
     }
 
     [HttpPost(Name = "Seek")]
@@ -135,14 +154,52 @@ public class PlayerController : ControllerBase
     [HttpPost(Name = "ShuffleQueue")]
     public async Task<IActionResult> ShuffleQueue(ulong guildId, ulong userId)
     {
-        try
+        var player = await _musicService.TryGetPlayerAsync(guildId).ConfigureAwait(false);
+        if (player is null)
         {
-            await _musicService.ShuffleQueueAsync(guildId).ConfigureAwait(false);
-            return Ok();
+            return NotFound();
         }
-        catch (Exception e)
+
+        await player.ShuffleAsync().ConfigureAwait(false);
+        return Ok();
+    }
+
+    [HttpPost(Name = "DistinctQueue")]
+    public async Task<IActionResult> DistinctQueue(ulong guildId, ulong userId)
+    {
+        var player = await _musicService.TryGetPlayerAsync(guildId).ConfigureAwait(false);
+        if (player is null)
         {
-            return Problem(e.StackTrace, e.Message);
+            return NotFound();
         }
+
+        await player.DistinctQueueAsync().ConfigureAwait(false);
+        return Ok();
+    }
+
+    [HttpPost(Name = "ClearQueue")]
+    public async Task<IActionResult> ClearQueue(ulong guildId, ulong userId)
+    {
+        var player = await _musicService.TryGetPlayerAsync(guildId).ConfigureAwait(false);
+        if (player is null)
+        {
+            return NotFound();
+        }
+
+        await player.ClearQueueAsync().ConfigureAwait(false);
+        return Ok();
+    }
+
+    [HttpPost(Name = "ReverseQueue")]
+    public async Task<IActionResult> ReverseQueue(ulong guildId, ulong userId)
+    {
+        var player = await _musicService.TryGetPlayerAsync(guildId).ConfigureAwait(false);
+        if (player is null)
+        {
+            return NotFound();
+        }
+
+        await player.ShuffleAsync().ConfigureAwait(false);
+        return Ok();
     }
 }

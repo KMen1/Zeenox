@@ -19,7 +19,6 @@ public sealed class ZeenoxPlayer : VoteLavalinkPlayer
     private ITextChannel TextChannel { get; }
     private IVoiceChannel VoiceChannel { get; }
     private IUserMessage? NowPlayingMessage { get; set; }
-    private List<string> Tracks { get; } = new();
 
     public async Task PlayAsync(IEnumerable<ZeenoxTrackItem> tracksEnumerable)
     {
@@ -27,8 +26,9 @@ public sealed class ZeenoxPlayer : VoteLavalinkPlayer
         if (tracks.Length == 0)
             return;
 
+        await PlayAsync(tracks[0]).ConfigureAwait(false);
         await Queue.AddRangeAsync(tracks[1..]).ConfigureAwait(false);
-        await PlayAsync(tracks[0], false).ConfigureAwait(false);
+        await UpdateMessageAsync().ConfigureAwait(false);
     }
 
     public async Task RewindAsync()
@@ -119,8 +119,6 @@ public sealed class ZeenoxPlayer : VoteLavalinkPlayer
         CancellationToken cancellationToken = new()
     )
     {
-        var track = queueItem.Track;
-        Tracks.Add($"[{track!.Title}]({track.Uri})");
         await UpdateMessageAsync(queueItem as ZeenoxTrackItem).ConfigureAwait(false);
     }
 
@@ -171,7 +169,7 @@ public sealed class ZeenoxPlayer : VoteLavalinkPlayer
         if (track is null)
         {
             return new EmbedBuilder().WithTitle(
-                "No song is currently playing, will disconnect in 3 minutes."
+                "There are no more tracks, I will disconnect in 3 minutes."
             );
         }
 
@@ -185,12 +183,9 @@ public sealed class ZeenoxPlayer : VoteLavalinkPlayer
             : new NowPlayingButtons(Queue, State is PlayerState.Paused, Volume, RepeatMode);
     }
 
-    public Task SendSongListMessageAsync()
+    public Task DeleteNowPlayingMessageAsync()
     {
-        return NowPlayingMessage?.ModifyAsync(x =>
-            {
-                x.Embeds = Tracks.Distinct().ToEmbeds("Listing songs that were played", 10);
-            }) ?? Task.CompletedTask;
+        return NowPlayingMessage?.DeleteAsync() ?? Task.CompletedTask;
     }
 
     public string ToJson()
@@ -198,12 +193,9 @@ public sealed class ZeenoxPlayer : VoteLavalinkPlayer
         return JsonConvert.SerializeObject(
             new
             {
-                TextChannelId = TextChannel.Id,
-                VoiceChannelId = VoiceChannel.Id,
                 TextChannelName = TextChannel.Name,
                 VoiceChannelName = VoiceChannel.Name,
-                IsPlaying = State is PlayerState.Playing,
-                IsPaused = State is PlayerState.Paused,
+                State,
                 Queue,
                 Volume,
                 RepeatMode

@@ -27,11 +27,11 @@ public class MusicService
         _audioService = audioService;
         trackingService.PlayerInactive += OnInactivePlayer;
     }
-    
+
     private static async Task OnInactivePlayer(object sender, PlayerInactiveEventArgs eventArgs)
     {
         var player = (ZeenoxPlayer)eventArgs.Player;
-        await player.SendSongListMessageAsync().ConfigureAwait(false);
+        await player.DeleteNowPlayingMessageAsync().ConfigureAwait(false);
     }
 
     public async Task<ZeenoxPlayer?> TryGetPlayerAsync(ulong guildId)
@@ -40,24 +40,6 @@ public class MusicService
             .GetPlayerAsync<ZeenoxPlayer>(guildId)
             .ConfigureAwait(false);
         return player;
-    }
-
-    public async Task SkipAsync(ulong guildId)
-    {
-        var player = await TryGetPlayerAsync(guildId).ConfigureAwait(false);
-        if (player is null)
-            return;
-
-        await player.SkipAsync().ConfigureAwait(false);
-    }
-
-    public async Task RewindAsync(ulong guildId)
-    {
-        var player = await TryGetPlayerAsync(guildId).ConfigureAwait(false);
-        if (player is null)
-            return;
-
-        await player.RewindAsync().ConfigureAwait(false);
     }
 
     public async Task SetVolumeAsync(ulong guildId, int volume)
@@ -69,17 +51,6 @@ public class MusicService
         await player
             .SetVolumeAsync((float)Math.Floor(volume / (double)2) / 100f)
             .ConfigureAwait(false);
-    }
-
-    public async Task OffsetVolumeAsync(ulong guildId, int offset)
-    {
-        var player = await TryGetPlayerAsync(guildId).ConfigureAwait(false);
-        if (player is null)
-            return;
-
-        var volume = (int)(player.Volume * 100);
-        volume += offset;
-        await player.SetVolumeAsync(volume / 100f).ConfigureAwait(false);
     }
 
     public async Task PauseOrResumeAsync(ulong guildId)
@@ -119,32 +90,6 @@ public class MusicService
         await player.SeekAsync(TimeSpan.FromSeconds(position)).ConfigureAwait(false);
     }
 
-    public async Task ClearQueueAsync(ulong guildId)
-    {
-        var player = await TryGetPlayerAsync(guildId).ConfigureAwait(false);
-        if (player is null)
-            return;
-
-        await player.ClearQueueAsync().ConfigureAwait(false);
-    }
-
-    public async Task ShuffleQueueAsync(ulong guildId)
-    {
-        var player = await TryGetPlayerAsync(guildId).ConfigureAwait(false);
-        if (player is null)
-            return;
-
-        await player.Queue.ShuffleAsync().ConfigureAwait(false);
-    }
-
-    public async Task DistinctQueueAsync(ulong guildId)
-    {
-        var player = await TryGetPlayerAsync(guildId).ConfigureAwait(false);
-        if (player is null)
-            return;
-        await player.DistinctQueueAsync().ConfigureAwait(false);
-    }
-
     public async Task<string?> GetLyricsAsync(ulong guildId)
     {
         var player = await TryGetPlayerAsync(guildId).ConfigureAwait(false);
@@ -180,7 +125,7 @@ public class MusicService
         if (player?.CurrentTrack is null)
             return 0;
 
-        return (int)player.Position!.Value.Position.TotalSeconds;
+        return (int)player.Position?.Position.TotalSeconds!;
     }
 
     public void AddWebSocket(ulong guildId, WebSocket webSocket)
@@ -197,23 +142,5 @@ public class MusicService
             return;
 
         _webSockets[guildId].Remove(webSocket);
-    }
-
-    public async Task ReverseQueueAsync(ulong guildId)
-    {
-        var player = await TryGetPlayerAsync(guildId).ConfigureAwait(false);
-        if (player is null)
-            return;
-
-        await player.ReverseQueueAsync().ConfigureAwait(false);
-    }
-
-    public async Task StopAsync(ulong guildId)
-    {
-        var player = await TryGetPlayerAsync(guildId).ConfigureAwait(false);
-        if (player is null)
-            return;
-
-        await player.StopAsync().ConfigureAwait(false);
     }
 }
