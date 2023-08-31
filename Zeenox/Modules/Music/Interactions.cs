@@ -108,6 +108,19 @@ public class Interactions : MusicBase
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
     }
 
+    [ComponentInteraction("disconnect")]
+    public async Task DisconnectAsync()
+    {
+        await DeferAsync(true).ConfigureAwait(false);
+        var player = await TryGetPlayerAsync().ConfigureAwait(false);
+        if (player is null)
+            return;
+
+        await player.DeleteNowPlayingMessageAsync().ConfigureAwait(false);
+        await player.DisconnectAsync().ConfigureAwait(false);
+        await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
+    }
+
     [ComponentInteraction("favorite")]
     public async Task FavoriteAsync()
     {
