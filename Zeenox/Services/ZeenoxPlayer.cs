@@ -26,9 +26,16 @@ public sealed class ZeenoxPlayer : VoteLavalinkPlayer
         if (tracks.Length == 0)
             return;
 
-        await PlayAsync(tracks[0]).ConfigureAwait(false);
+
+        if (CurrentItem is not null)
+        {
+            await PlayAsync(tracks[0]).ConfigureAwait(false);
+            await Queue.AddRangeAsync(tracks[1..]).ConfigureAwait(false);
+            return;
+        }
+        
         await Queue.AddRangeAsync(tracks[1..]).ConfigureAwait(false);
-        await UpdateMessageAsync().ConfigureAwait(false);
+        await PlayAsync(tracks[0], false).ConfigureAwait(false);
     }
 
     public async Task RewindAsync()
