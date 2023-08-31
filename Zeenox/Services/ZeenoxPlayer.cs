@@ -186,7 +186,7 @@ public sealed class ZeenoxPlayer : VoteLavalinkPlayer
     private ComponentBuilder GetButtons(ZeenoxTrackItem? track)
     {
         return track is null
-            ? new ComponentBuilder()
+            ? new ComponentBuilder().WithButton("Disconnect Now", "disconnect", ButtonStyle.Danger, new Emoji("⚠️"))
             : new NowPlayingButtons(Queue, State is PlayerState.Paused, Volume, RepeatMode);
     }
 
