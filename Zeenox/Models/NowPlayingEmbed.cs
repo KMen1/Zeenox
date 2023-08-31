@@ -21,9 +21,7 @@ public class NowPlayingEmbed : EmbedBuilder
         ImageUrl = coverUrl;
         Footer = new EmbedFooterBuilder()
             .WithIconUrl(trackItem.RequestedBy.GetAvatarUrl())
-            .WithText($"Requested by {trackItem.RequestedBy.Username}");
-        AddField("🕐 Length", $"`{track.Duration.ToTimeString()}`", true);
-        AddField("🔊 Volume", $"`{Math.Round(volume * 200)}%`", true);
+            .WithText($"Requested by {trackItem.RequestedBy.Username} | Length: {track.Duration.ToTimeString()} | Volume: {Math.Round(volume * 200)}%");
         if (queue.Count <= 0)
             return;
         var sb = new StringBuilder();
