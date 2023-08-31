@@ -13,7 +13,7 @@ public class NowPlayingButtons : ComponentBuilder
     )
     {
         WithButton(
-            "Back",
+            "Previous",
             "previous",
             emote: new Emoji("⏮"),
             disabled: queue is { HasHistory: false, History.Count: 0 },
@@ -26,7 +26,7 @@ public class NowPlayingButtons : ComponentBuilder
             row: 0
         );
         WithButton("Stop", "stop", emote: new Emoji("⏹"), row: 0);
-        WithButton("Skip", "skip", emote: new Emoji("⏭"), disabled: queue.Count == 0, row: 0);
+        WithButton("Next", "skip", emote: new Emoji("⏭"), disabled: queue.Count == 0, row: 0);
         WithButton("Down", "volumedown", emote: new Emoji("🔉"), disabled: volume == 0, row: 1);
         WithButton(
             "Loop "
