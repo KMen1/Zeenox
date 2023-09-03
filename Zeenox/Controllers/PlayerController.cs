@@ -142,7 +142,7 @@ public class PlayerController : ControllerBase
     {
         try
         {
-            await _musicService.CycleLoopMode(guildId).ConfigureAwait(false);
+            await _musicService.CycleLoopModeAsync(guildId).ConfigureAwait(false);
             return Ok();
         }
         catch (Exception e)
