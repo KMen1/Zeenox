@@ -25,10 +25,13 @@ public class MusicService
     {
         _lyricsService = lyricsService;
         _audioService = audioService;
-        trackingService.PlayerInactive += OnInactivePlayer;
+        trackingService.PlayerInactive += OnInactivePlayerAsync;
     }
 
-    private static async Task OnInactivePlayer(object sender, PlayerInactiveEventArgs eventArgs)
+    private static async Task OnInactivePlayerAsync(
+        object sender,
+        PlayerInactiveEventArgs eventArgs
+    )
     {
         var player = (ZeenoxPlayer)eventArgs.Player;
         await player.DeleteNowPlayingMessageAsync().ConfigureAwait(false);
@@ -69,7 +72,7 @@ public class MusicService
         }
     }
 
-    public async Task CycleLoopMode(ulong guildId)
+    public async Task CycleLoopModeAsync(ulong guildId)
     {
         var player = await TryGetPlayerAsync(guildId).ConfigureAwait(false);
         if (player is null)
