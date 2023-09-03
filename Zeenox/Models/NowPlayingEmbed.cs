@@ -37,6 +37,6 @@ public class NowPlayingEmbed : EmbedBuilder
         if (queue.Count > 5)
             sb.AppendLine($"`and {queue.Count - 5} more...`");
 
-        AddField("📃 Queue", $"{sb.ToString().TrimEnd('\r', '\n')}");
+        AddField("📃 Next Tracks", $"{sb.ToString().TrimEnd('\r', '\n')}");
     }
 }
