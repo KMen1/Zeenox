@@ -17,9 +17,16 @@ public class Commands : MusicBase
 
     [RequireWhitelistedChannel]
     [RequireWhitelistedRole]
-    [SlashCommand("play", "Plays a song")]
+    [SlashCommand("play", "Plays a song. The bot will join the channel you are currently in.")]
     public async Task PlayAsync(
-        [Summary("query"), Autocomplete(typeof(SearchAutocompleteHandler))] string query
+        [
+            Summary(
+                "query",
+                "URL or title of song. (Supported: Spotify, Youtube, SoundCloud, BandCamp)"
+            ),
+            Autocomplete(typeof(SearchAutocompleteHandler))
+        ]
+            string query
     )
     {
         await DeferAsync(true).ConfigureAwait(false);
@@ -74,7 +81,10 @@ public class Commands : MusicBase
 
     [RequireWhitelistedChannel]
     [RequireWhitelistedRole]
-    [SlashCommand("play-fav", "Plays your favorite songs")]
+    [SlashCommand(
+        "play-fav",
+        "Plays all of your favorited songs. The bot will join the channel you are currently in."
+    )]
     public async Task PlayFavAsync()
     {
         await DeferAsync(true).ConfigureAwait(false);
@@ -102,8 +112,10 @@ public class Commands : MusicBase
 
     [RequireWhitelistedChannel]
     [RequireWhitelistedRole]
-    [SlashCommand("skipto", "Skips to a song in the queue")]
-    public async Task SkipToAsync([Summary("index"), MinValue(1)] int index)
+    [SlashCommand("skipto", "Skips to a song in the queue.")]
+    public async Task SkipToAsync(
+        [Summary("index", "Index of song in the queue."), MinValue(1)] int index
+    )
     {
         await DeferAsync(true).ConfigureAwait(false);
 
@@ -123,8 +135,10 @@ public class Commands : MusicBase
 
     [RequireWhitelistedChannel]
     [RequireWhitelistedRole]
-    [SlashCommand("remove", "Removes a song from the queue")]
-    public async Task RemoveAsync([Summary("index"), MinValue(1)] int index)
+    [SlashCommand("remove", "Removes a song from the queue.")]
+    public async Task RemoveAsync(
+        [Summary("index", "Index of song in the queue."), MinValue(1)] int index
+    )
     {
         await DeferAsync(true).ConfigureAwait(false);
 
@@ -144,8 +158,10 @@ public class Commands : MusicBase
 
     [RequireWhitelistedChannel]
     [RequireWhitelistedRole]
-    [SlashCommand("volume", "Sets the volume")]
-    public async Task VolumeAsync([MinValue(0), MaxValue(100)] int volume)
+    [SlashCommand("volume", "Sets the volume.")]
+    public async Task VolumeAsync(
+        [MinValue(1), MaxValue(100), Summary("volume", "Volume between 1 and 100.")] int volume
+    )
     {
         await DeferAsync(true).ConfigureAwait(false);
         var player = await TryGetPlayerAsync().ConfigureAwait(false);
@@ -160,7 +176,7 @@ public class Commands : MusicBase
 
     [RequireWhitelistedChannel]
     [RequireWhitelistedRole]
-    [SlashCommand("shuffle", "Shuffles the queue")]
+    [SlashCommand("shuffle", "Shuffles the queue.")]
     public async Task ShuffleAsync()
     {
         await DeferAsync(true).ConfigureAwait(false);
@@ -174,7 +190,7 @@ public class Commands : MusicBase
 
     [RequireWhitelistedChannel]
     [RequireWhitelistedRole]
-    [SlashCommand("distinct", "Removes duplicates from the queue")]
+    [SlashCommand("distinct", "Removes duplicates from the queue.")]
     public async Task DistinctAsync()
     {
         await DeferAsync(true).ConfigureAwait(false);
@@ -187,7 +203,7 @@ public class Commands : MusicBase
     }
 
     [RequireWhitelistedChannel]
-    [SlashCommand("queue", "Shows the queue")]
+    [SlashCommand("queue", "Shows the queue.")]
     public async Task ShowQueueAsync()
     {
         var player = await TryGetPlayerAsync().ConfigureAwait(false);
@@ -213,7 +229,9 @@ public class Commands : MusicBase
                     builder.AppendLine($"`{i + 1 + index}. {x[i]}`");
                 }
                 index += x.Length;
-                var pageBuilder =  new PageBuilder().WithTitle("Current Queue").WithDescription(builder.ToString());
+                var pageBuilder = new PageBuilder()
+                    .WithTitle("Current Queue")
+                    .WithDescription(builder.ToString());
                 builder.Clear();
                 return pageBuilder;
             });
@@ -232,7 +250,7 @@ public class Commands : MusicBase
 
     [RequireWhitelistedChannel]
     [RequireWhitelistedRole]
-    [SlashCommand("clear", "Clears the queue")]
+    [SlashCommand("clear", "Clears the queue.")]
     public async Task ClearAsync()
     {
         await DeferAsync(true).ConfigureAwait(false);
@@ -246,7 +264,7 @@ public class Commands : MusicBase
 
     [RequireWhitelistedChannel]
     [RequireWhitelistedRole]
-    [SlashCommand("reverse", "Reverses the order of the queue")]
+    [SlashCommand("reverse", "Reverses the order of the queue.")]
     public async Task ReverseAsync()
     {
         await DeferAsync(true).ConfigureAwait(false);
@@ -260,7 +278,7 @@ public class Commands : MusicBase
 
     [RequireWhitelistedChannel]
     [RequireWhitelistedRole]
-    [SlashCommand("lyrics", "Shows the lyrics of the current song")]
+    [SlashCommand("lyrics", "Shows the lyrics of the current song.")]
     public async Task LyricsAsync()
     {
         await DeferAsync(true).ConfigureAwait(false);
@@ -275,7 +293,7 @@ public class Commands : MusicBase
     }
 
     [RequireUserPermission(GuildPermission.ManageGuild)]
-    [SlashCommand("whitelist-role", "Whitelists a role or removes it from the whitelist")]
+    [SlashCommand("whitelist-role", "Whitelists a role or removes it from the whitelist.")]
     public async Task WhitelistRoleAsync(IRole role)
     {
         await DeferAsync(true).ConfigureAwait(false);
@@ -308,7 +326,7 @@ public class Commands : MusicBase
     }
 
     [RequireUserPermission(GuildPermission.ManageGuild)]
-    [SlashCommand("whitelist-channel", "Whitelists a channel or removes it from the whitelist")]
+    [SlashCommand("whitelist-channel", "Whitelists a channel or removes it from the whitelist.")]
     public async Task WhitelistChannelAsync(IVoiceChannel channel)
     {
         await DeferAsync(true).ConfigureAwait(false);
