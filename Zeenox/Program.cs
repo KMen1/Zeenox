@@ -18,9 +18,6 @@ Log.Logger = new LoggerConfiguration().Enrich
     .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);
-var lavaHost = builder.Configuration.GetSection("Lavalink")["Host"]!;
-var lavaPort = builder.Configuration.GetSection("Lavalink")["Port"]!;
-var lavaPassword = builder.Configuration.GetSection("Lavalink")["Password"]!;
 
 builder.Host
     .UseSerilog()
@@ -32,7 +29,7 @@ builder.Host
                 LogLevel = LogSeverity.Verbose,
                 AlwaysDownloadUsers = true,
                 MessageCacheSize = 200,
-                GatewayIntents = GatewayIntents.All,
+                GatewayIntents = GatewayIntents.AllUnprivileged,
                 LogGatewayIntentWarnings = false,
                 DefaultRetryMode = RetryMode.AlwaysFail
             };
@@ -50,7 +47,6 @@ builder.Host
     )
     .ConfigureServices(
         (context, services) =>
-        {
             services
                 .AddHostedService<InteractionHandler>()
                 .AddLavalink()
@@ -76,8 +72,7 @@ builder.Host
                 .AddSingleton<InteractiveService>()
                 .AddSingleton<DatabaseService>()
                 .AddSingleton<MusicService>()
-                .AddMemoryCache();
-        }
+                .AddMemoryCache()
     );
 
 builder.Services.AddControllers();
