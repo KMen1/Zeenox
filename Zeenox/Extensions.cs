@@ -1,5 +1,7 @@
-﻿using Lavalink4NET.Players.Queued;
+﻿using Lavalink4NET.Integrations.Lavasrc;
+using Lavalink4NET.Players.Queued;
 using Lavalink4NET.Tracks;
+using Zeenox.Models;
 
 namespace Zeenox;
 
@@ -14,6 +16,12 @@ public static class Extensions
     {
         var track = queueItem.Track!;
         return track.SourceName == "spotify" ? $"{track.Author} - {track.Title}" : track.Title;
+    }
+
+    public static string? GetThumbnailUrl(this ITrackQueueItem queueItem)
+    {
+        var track = queueItem.Track!;
+        return new ExtendedLavalinkTrack(track).ArtworkUri?.ToString();
     }
 
     public static string ToTimeString(this TimeSpan timeSpan)

@@ -1,6 +1,5 @@
 ﻿using System.Text;
 using Discord;
-using Lavalink4NET.Integrations.Lavasrc;
 using Lavalink4NET.Players.Queued;
 
 namespace Zeenox.Models;
@@ -10,7 +9,6 @@ public class NowPlayingEmbed : EmbedBuilder
     public NowPlayingEmbed(ZeenoxTrackItem trackItem, float volume, ITrackQueue queue)
     {
         var track = trackItem.Reference.Track!;
-        var coverUrl = new ExtendedLavalinkTrack(track).ArtworkUri?.ToString();
 
         Author = new EmbedAuthorBuilder()
             .WithName("NOW PLAYING")
@@ -18,10 +16,12 @@ public class NowPlayingEmbed : EmbedBuilder
         Title = track.GetTitle();
         Url = track.Uri?.ToString() ?? "";
         Color = new Color(31, 31, 31);
-        ImageUrl = coverUrl;
+        ImageUrl = trackItem.GetThumbnailUrl();
         Footer = new EmbedFooterBuilder()
             .WithIconUrl(trackItem.RequestedBy.GetAvatarUrl())
-            .WithText($"Requested by {trackItem.RequestedBy.Username} | Length: {track.Duration.ToTimeString()} | Volume: {Math.Round(volume * 200)}%");
+            .WithText(
+                $"Requested by {trackItem.RequestedBy.Username} | Length: {track.Duration.ToTimeString()} | Volume: {Math.Round(volume * 200)}%"
+            );
         if (queue.Count <= 0)
             return;
         var sb = new StringBuilder();
