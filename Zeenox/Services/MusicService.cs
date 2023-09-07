@@ -102,17 +102,24 @@ public class MusicService
             : await _lyricsService.GetLyricsAsync(player.CurrentTrack).ConfigureAwait(false);
     }
 
-    public async Task SendWebSocketMessagesAsync(ulong guildId, SocketMessage message)
+    public async Task UpdateSocketsAsync(ulong guildId)
     {
         if (!_webSockets.ContainsKey(guildId))
             return;
+        var player = await TryGetPlayerAsync(guildId).ConfigureAwait(false);
 
         var webSockets = _webSockets[guildId];
         foreach (var webSocket in webSockets)
         {
             await webSocket
                 .SendAsync(
-                    Encoding.UTF8.GetBytes(JsonSerializer.Serialize(message)),
+                    Encoding.UTF8.GetBytes(
+                        JsonSerializer.Serialize(
+                            player is null
+                                ? SocketMessage.Empty
+                                : SocketMessage.FromZeenoxPlayer(player)
+                        )
+                    ),
                     WebSocketMessageType.Text,
                     true,
                     CancellationToken.None

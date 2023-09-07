@@ -51,10 +51,10 @@ public class WebSocketController : ControllerBase
 
         while (!receiveResult.CloseStatus.HasValue)
         {
-            var position = await _musicService
-                .GetPlayerPositionAsync(guildId)
-                .ConfigureAwait(false);
-            var messageToSend = new SocketMessage { Position = position };
+            var player = await _musicService.TryGetPlayerAsync(guildId).ConfigureAwait(false);
+            if (player is null)
+                break;
+            var messageToSend = SocketMessage.FromZeenoxPlayer(player, updatePlayer: true);
 
             await socket
                 .SendAsync(
