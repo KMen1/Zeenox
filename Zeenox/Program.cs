@@ -104,4 +104,4 @@ app.UseAuthorization();
 app.UseWebSockets();
 app.MapControllers();
 
-app.Run();
+app.Run("http://*:80");
