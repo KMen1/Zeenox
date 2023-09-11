@@ -4,6 +4,7 @@ using Discord.Interactions;
 using Discord.WebSocket;
 using Fergun.Interactive;
 using Lavalink4NET.Extensions;
+using Lavalink4NET.InactivityTracking;
 using Lavalink4NET.InactivityTracking.Extensions;
 using Lavalink4NET.Lyrics.Extensions;
 using Microsoft.AspNetCore.Mvc.Versioning;
@@ -26,10 +27,14 @@ builder.Host
         {
             config.SocketConfig = new DiscordSocketConfig
             {
+#if DEBUG
                 LogLevel = LogSeverity.Verbose,
+#elif RELEASE
+                LogLevel = LogSeverity.Info,
+#endif
                 AlwaysDownloadUsers = true,
                 MessageCacheSize = 200,
-                GatewayIntents = GatewayIntents.AllUnprivileged,
+                GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.GuildMembers,
                 LogGatewayIntentWarnings = false,
                 DefaultRetryMode = RetryMode.AlwaysFail
             };
@@ -40,7 +45,11 @@ builder.Host
         (_, config) =>
         {
             config.DefaultRunMode = RunMode.Async;
+#if DEBUG
             config.LogLevel = LogSeverity.Verbose;
+#elif RELEASE
+            config.LogLevel = LogSeverity.Info;
+#endif
             config.UseCompiledLambda = true;
             config.LocalizationManager = new JsonLocalizationManager("/", "CommandLocale");
         }
@@ -50,25 +59,24 @@ builder.Host
             services
                 .AddHostedService<InteractionHandler>()
                 .AddLavalink()
-                /*.ConfigureLavalink(x =>
-                {
-                    x.BaseAddress = new Uri($"http://{lavaHost}:{lavaPort}");
-                    x.WebSocketUri = new Uri($"ws://{lavaHost}:{lavaPort}");
-                    x.Passphrase = lavaPassword;
-                })*/
                 .AddInactivityTracking()
                 .ConfigureInactivityTracking(x =>
                 {
                     x.DefaultTimeout = TimeSpan.FromMinutes(3);
+                    x.TrackingMode = InactivityTrackingMode.Any;
                 })
                 .AddLyrics()
+#if DEBUG
                 .AddLogging(x => x.AddConsole().SetMinimumLevel(LogLevel.Trace))
+#elif RELEASE
+                .AddLogging(x => x.AddConsole().SetMinimumLevel(LogLevel.Information))
+#endif
                 .AddSingleton<IMongoClient>(
                     new MongoClient(
                         context.Configuration.GetSection("MongoDB")["ConnectionString"]!
                     )
                 )
-                .AddSingleton(new InteractiveConfig { DefaultTimeout = TimeSpan.FromMinutes(5) }) // Optional config
+                .AddSingleton(new InteractiveConfig { DefaultTimeout = TimeSpan.FromMinutes(5) })
                 .AddSingleton<InteractiveService>()
                 .AddSingleton<DatabaseService>()
                 .AddSingleton<MusicService>()
@@ -104,4 +112,11 @@ app.UseAuthorization();
 app.UseWebSockets();
 app.MapControllers();
 
-app.Run("http://*:80");
+if (app.Environment.IsDevelopment())
+{
+    app.Run();
+}
+else
+{
+    app.Run("http://*:80");
+}
