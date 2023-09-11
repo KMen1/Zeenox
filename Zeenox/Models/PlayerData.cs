@@ -11,7 +11,7 @@ public class PlayerData
         PlayerState state,
         TrackRepeatMode repeatMode,
         int volume,
-        int? position
+        int position
     )
     {
         ShouldUpdate = shouldUpdate;
@@ -25,7 +25,7 @@ public class PlayerData
     public PlayerState State { get; init; }
     public TrackRepeatMode RepeatMode { get; init; }
     public int Volume { get; init; }
-    public int? Position { get; init; }
+    public int Position { get; init; }
 
     public static PlayerData FromZeenoxPlayer(ZeenoxPlayer player)
     {
@@ -34,10 +34,10 @@ public class PlayerData
             player.State,
             player.RepeatMode,
             (int)Math.Round(player.Volume * 200),
-            player.Position.HasValue ? (int)player.Position.Value.Position.TotalSeconds : null
+            player.Position.HasValue ? (int)player.Position.Value.Position.TotalSeconds : 0
         );
     }
 
     public static PlayerData Empty =>
-        new(false, PlayerState.NotPlaying, TrackRepeatMode.None, 0, null);
+        new(false, PlayerState.NotPlaying, TrackRepeatMode.None, 0, 0);
 }
