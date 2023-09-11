@@ -14,11 +14,29 @@ public class PlayerController : ControllerBase
 {
     private readonly MusicService _musicService;
     private readonly DatabaseService _databaseService;
+    private readonly DiscordSocketClient _client;
 
-    public PlayerController(MusicService musicService, DatabaseService databaseService)
+    public PlayerController(
+        MusicService musicService,
+        DatabaseService databaseService,
+        DiscordSocketClient client
+    )
     {
         _musicService = musicService;
         _databaseService = databaseService;
+        _client = client;
+    }
+
+    [HttpGet(Name = "GetAvailableGuilds")]
+    public IActionResult GetAvailableGuilds(ulong userId)
+    {
+        var guilds = _client.Guilds.Where(
+            x =>
+                x.Users.Select(y => y.Id).Contains(userId)
+                && x.Users.First(z => z.Id == userId).GuildPermissions.ManageGuild
+        );
+        var guildsList = guilds.Select(GuildInfo.FromSocketGuild);
+        return Ok(JsonConvert.SerializeObject(guildsList));
     }
 
     [HttpGet(Name = "GetPlayer")]
