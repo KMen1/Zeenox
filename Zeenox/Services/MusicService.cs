@@ -25,7 +25,21 @@ public class MusicService
     {
         _lyricsService = lyricsService;
         _audioService = audioService;
+        audioService.TrackStarted += OnTrackStartedAsync;
+        audioService.TrackEnded += OnTrackEndedAsync;
         trackingService.PlayerInactive += OnInactivePlayerAsync;
+    }
+
+    private Task OnTrackEndedAsync(object sender, TrackEndedEventArgs eventargs)
+    {
+        return ((ZeenoxPlayer)eventargs.Player).Queue.Count == 0
+            ? UpdateSocketsAsync(eventargs.Player.GuildId, true, true, true)
+            : Task.CompletedTask;
+    }
+
+    private Task OnTrackStartedAsync(object _, TrackStartedEventArgs eventargs)
+    {
+        return UpdateSocketsAsync(eventargs.Player.GuildId, updateTrack: true, updateQueue: true);
     }
 
     private static async Task OnInactivePlayerAsync(
