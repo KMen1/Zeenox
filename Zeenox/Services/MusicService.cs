@@ -15,7 +15,7 @@ public class MusicService
 {
     private readonly IAudioService _audioService;
     private readonly ILyricsService _lyricsService;
-    private readonly Dictionary<ulong, List<WebSocket>> _webSockets = new();
+    private readonly ConcurrentDictionary<ulong, List<WebSocket>> _webSockets = new();
 
     public MusicService(
         IAudioService audioService,
@@ -141,7 +141,7 @@ public class MusicService
     public void AddWebSocket(ulong guildId, WebSocket webSocket)
     {
         if (!_webSockets.ContainsKey(guildId))
-            _webSockets.Add(guildId, new List<WebSocket>());
+            _webSockets.TryAdd(guildId, new List<WebSocket>());
 
         _webSockets[guildId].Add(webSocket);
     }
