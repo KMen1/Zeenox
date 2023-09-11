@@ -145,16 +145,6 @@ public class MusicService
         }
     }
 
-    public async Task<int> GetPlayerPositionAsync(ulong guildId)
-    {
-        var player = await TryGetPlayerAsync(guildId).ConfigureAwait(false);
-
-        if (player?.CurrentTrack is null)
-            return 0;
-
-        return (int)player.Position?.Position.TotalSeconds!;
-    }
-
     public void AddWebSocket(ulong guildId, WebSocket webSocket)
     {
         if (!_webSockets.ContainsKey(guildId))
