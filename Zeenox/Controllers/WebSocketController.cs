@@ -73,7 +73,7 @@ public class WebSocketController : ControllerBase
             {
                 await Task.Delay(1000, token).ConfigureAwait(false);
             }
-            catch (TaskCanceledException e)
+            catch (TaskCanceledException)
             {
                 break;
             }
