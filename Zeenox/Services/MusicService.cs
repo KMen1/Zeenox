@@ -1,7 +1,9 @@
-﻿using System.Net.WebSockets;
+﻿using System.Collections.Concurrent;
+using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using Lavalink4NET;
+using Lavalink4NET.Events.Players;
 using Lavalink4NET.InactivityTracking;
 using Lavalink4NET.InactivityTracking.Events;
 using Lavalink4NET.Lyrics;
@@ -116,13 +118,14 @@ public class MusicService
             : await _lyricsService.GetLyricsAsync(player.CurrentTrack).ConfigureAwait(false);
     }
 
-    public async Task UpdateSocketsAsync(ulong guildId)
+    private async Task UpdateSocketsAsync(ulong guildId, bool updatePlayer = false, bool updateTrack = false, bool updateQueue = false)
     {
         if (!_webSockets.ContainsKey(guildId))
             return;
         var player = await TryGetPlayerAsync(guildId).ConfigureAwait(false);
 
         var webSockets = _webSockets[guildId];
+        webSockets.RemoveAll(x => x.State != WebSocketState.Open);
         foreach (var webSocket in webSockets)
         {
             await webSocket
@@ -131,7 +134,7 @@ public class MusicService
                         JsonSerializer.Serialize(
                             player is null
                                 ? SocketMessage.Empty
-                                : SocketMessage.FromZeenoxPlayer(player)
+                                : SocketMessage.FromZeenoxPlayer(player, updateQueue, updateTrack, updatePlayer)
                         )
                     ),
                     WebSocketMessageType.Text,
