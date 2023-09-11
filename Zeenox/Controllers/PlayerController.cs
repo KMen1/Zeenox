@@ -1,5 +1,9 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Discord.WebSocket;
+using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
+using Zeenox.Models;
 using Zeenox.Services;
+using SocketMessage = Zeenox.Models.SocketMessage;
 
 namespace Zeenox.Controllers;
 
@@ -25,7 +29,11 @@ public class PlayerController : ControllerBase
         {
             return NotFound();
         }
-        return Content(player.ToJson(), "application/json");
+
+        return Content(
+            JsonConvert.SerializeObject(SocketMessage.FromZeenoxPlayer(player, true, true, true)),
+            "application/json"
+        );
     }
 
     [HttpGet(Name = "GetFavoriteTracks")]
@@ -83,8 +91,8 @@ public class PlayerController : ControllerBase
         return Ok();
     }
 
-    [HttpPost(Name = "Skip")]
-    public async Task<IActionResult> Skip(ulong guildId, ulong userId)
+    [HttpPost(Name = "Next")]
+    public async Task<IActionResult> Next(ulong guildId, ulong userId)
     {
         var player = await _musicService.TryGetPlayerAsync(guildId).ConfigureAwait(false);
         if (player is null)
@@ -96,8 +104,8 @@ public class PlayerController : ControllerBase
         return Ok();
     }
 
-    [HttpPost(Name = "Rewind")]
-    public async Task<IActionResult> Rewind(ulong guildId, ulong userId)
+    [HttpPost(Name = "Back")]
+    public async Task<IActionResult> Back(ulong guildId, ulong userId)
     {
         var player = await _musicService.TryGetPlayerAsync(guildId).ConfigureAwait(false);
         if (player is null)
@@ -137,8 +145,8 @@ public class PlayerController : ControllerBase
         }
     }
 
-    [HttpPost(Name = "CycleLoopMode")]
-    public async Task<IActionResult> CycleLoopMode(ulong guildId, ulong userId)
+    [HttpPost(Name = "Repeat")]
+    public async Task<IActionResult> Repeat(ulong guildId, ulong userId)
     {
         try
         {
@@ -151,8 +159,8 @@ public class PlayerController : ControllerBase
         }
     }
 
-    [HttpPost(Name = "ShuffleQueue")]
-    public async Task<IActionResult> ShuffleQueue(ulong guildId, ulong userId)
+    [HttpPost(Name = "Shuffle")]
+    public async Task<IActionResult> Shuffle(ulong guildId, ulong userId)
     {
         var player = await _musicService.TryGetPlayerAsync(guildId).ConfigureAwait(false);
         if (player is null)
