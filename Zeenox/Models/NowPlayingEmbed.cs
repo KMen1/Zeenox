@@ -20,7 +20,7 @@ public class NowPlayingEmbed : EmbedBuilder
         Footer = new EmbedFooterBuilder()
             .WithIconUrl(trackItem.RequestedBy.GetAvatarUrl())
             .WithText(
-                $"Requested by {trackItem.RequestedBy.Username} | Length: {track.Duration.ToTimeString()} | Volume: {Math.Round(volume * 200)}%"
+                $"Added by {trackItem.RequestedBy.Username} | Length: {track.Duration.ToTimeString()} | Volume: {Math.Round(volume * 200)}%"
             );
         if (queue.Count <= 0)
             return;
