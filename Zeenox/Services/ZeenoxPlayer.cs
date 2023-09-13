@@ -20,22 +20,23 @@ public sealed class ZeenoxPlayer : VoteLavalinkPlayer
     private IVoiceChannel VoiceChannel { get; }
     private IUserMessage? NowPlayingMessage { get; set; }
 
-    public async Task PlayAsync(IEnumerable<ZeenoxTrackItem> tracksEnumerable)
+    public async Task<int> PlayAsync(IEnumerable<ZeenoxTrackItem> tracksEnumerable)
     {
         var tracks = tracksEnumerable.ToArray();
         if (tracks.Length == 0)
-            return;
+            return 0;
 
 
         if (CurrentItem is not null)
         {
             await PlayAsync(tracks[0]).ConfigureAwait(false);
             await Queue.AddRangeAsync(tracks[1..]).ConfigureAwait(false);
-            return;
+            return 1;
         }
         
         await Queue.AddRangeAsync(tracks[1..]).ConfigureAwait(false);
         await PlayAsync(tracks[0], false).ConfigureAwait(false);
+        return 0;
     }
 
     public async Task RewindAsync()
