@@ -53,9 +53,9 @@ public class WebSocketController : ControllerBase
 
     private async Task SendLoopAsync(WebSocket socket, ulong guildId, CancellationToken token)
     {
-        var player = await _musicService.TryGetPlayerAsync(guildId).ConfigureAwait(false);
         while (!token.IsCancellationRequested && socket.State == WebSocketState.Open)
         {
+            var player = await _musicService.TryGetPlayerAsync(guildId).ConfigureAwait(false);
             if (player?.State is PlayerState.Playing)
             {
                 var message = SocketMessage.FromZeenoxPlayer(player, updatePlayer: true);
