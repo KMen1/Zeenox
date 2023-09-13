@@ -118,7 +118,7 @@ public class MusicService
             : await _lyricsService.GetLyricsAsync(player.CurrentTrack).ConfigureAwait(false);
     }
 
-    private async Task UpdateSocketsAsync(ulong guildId, bool updatePlayer = false, bool updateTrack = false, bool updateQueue = false)
+    public async Task UpdateSocketsAsync(ulong guildId, bool updatePlayer = false, bool updateTrack = false, bool updateQueue = false)
     {
         if (!_webSockets.ContainsKey(guildId))
             return;

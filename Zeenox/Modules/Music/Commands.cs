@@ -61,9 +61,10 @@ public class Commands : MusicBase
 
         var tracks = results.Tracks.ToList();
 
+        int index;
         if (results.Playlist is not null)
         {
-            await player
+            index = await player
                 .PlayAsync(
                     tracks.Select(x => new ZeenoxTrackItem(new TrackReference(x), Context.User))
                 )
@@ -71,12 +72,18 @@ public class Commands : MusicBase
         }
         else
         {
-            await player
+             index = await player
                 .PlayAsync(new ZeenoxTrackItem(new TrackReference(tracks[0]), Context.User))
                 .ConfigureAwait(false);
         }
 
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
+
+        if (index != 0)
+        {
+            await MusicService.UpdateSocketsAsync(Context.Guild.Id, updateQueue: true)
+                .ConfigureAwait(false);
+        }
     }
 
     [RequireWhitelistedChannel]
@@ -131,6 +138,7 @@ public class Commands : MusicBase
 
         await player.SkipToAsync(index - 1).ConfigureAwait(false);
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
+        await MusicService.UpdateSocketsAsync(Context.Guild.Id, updateQueue: true).ConfigureAwait(false);
     }
 
     [RequireWhitelistedChannel]
@@ -154,6 +162,7 @@ public class Commands : MusicBase
 
         await player.RemoveAsync(index - 1).ConfigureAwait(false);
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
+        await MusicService.UpdateSocketsAsync(Context.Guild.Id, updateQueue: true).ConfigureAwait(false);
     }
 
     [RequireWhitelistedChannel]
@@ -186,6 +195,7 @@ public class Commands : MusicBase
 
         await player.ShuffleAsync().ConfigureAwait(false);
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
+        await MusicService.UpdateSocketsAsync(Context.Guild.Id, updateQueue: true).ConfigureAwait(false);
     }
 
     [RequireWhitelistedChannel]
@@ -200,6 +210,7 @@ public class Commands : MusicBase
 
         await player.DistinctQueueAsync().ConfigureAwait(false);
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
+        await MusicService.UpdateSocketsAsync(Context.Guild.Id, updateQueue: true).ConfigureAwait(false);
     }
 
     [RequireWhitelistedChannel]
@@ -260,6 +271,7 @@ public class Commands : MusicBase
 
         await player.ClearQueueAsync().ConfigureAwait(false);
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
+        await MusicService.UpdateSocketsAsync(Context.Guild.Id, updateQueue: true).ConfigureAwait(false);
     }
 
     [RequireWhitelistedChannel]
@@ -274,6 +286,7 @@ public class Commands : MusicBase
 
         await player.ReverseQueueAsync().ConfigureAwait(false);
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
+        await MusicService.UpdateSocketsAsync(Context.Guild.Id, updateQueue: true).ConfigureAwait(false);
     }
 
     [RequireWhitelistedChannel]

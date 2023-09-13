@@ -74,6 +74,7 @@ public class PlayerController : ControllerBase
         try
         {
             await _musicService.PauseOrResumeAsync(guildId).ConfigureAwait(false);
+            await _musicService.UpdateSocketsAsync(guildId, updatePlayer: true).ConfigureAwait(false);
             return Ok();
         }
         catch (Exception e)
@@ -88,6 +89,7 @@ public class PlayerController : ControllerBase
         try
         {
             await _musicService.PauseOrResumeAsync(guildId).ConfigureAwait(false);
+            await _musicService.UpdateSocketsAsync(guildId, updatePlayer: true).ConfigureAwait(false);
             return Ok();
         }
         catch (Exception e)
@@ -119,6 +121,67 @@ public class PlayerController : ControllerBase
         }
 
         await player.SkipAsync().ConfigureAwait(false);
+        return Ok();
+    }
+
+    [HttpPost(Name = "SkipTo")]
+    public async Task<IActionResult> SkipTo(ulong guildId, ulong userId, int index)
+    {
+        var player = await _musicService.TryGetPlayerAsync(guildId).ConfigureAwait(false);
+        if (player is null)
+        {
+            return NotFound();
+        }
+
+        await player.SkipToAsync(index).ConfigureAwait(false);
+        return Ok();
+    }
+
+    [HttpPost(Name = "Remove")]
+    public async Task<IActionResult> Remove(ulong guildId, ulong userId, int index)
+    {
+        var player = await _musicService.TryGetPlayerAsync(guildId).ConfigureAwait(false);
+        if (player is null)
+        {
+            return NotFound();
+        }
+
+        await player.RemoveAsync(index).ConfigureAwait(false);
+        return Content(
+            JsonConvert.SerializeObject(SocketMessage.FromZeenoxPlayer(player, updateQueue: true))
+        , "application/json");
+    }
+
+    [HttpPost(Name = "Like")]
+    public async Task<IActionResult> Like(ulong guildId, ulong userId, int index)
+    {
+        var player = await _musicService.TryGetPlayerAsync(guildId).ConfigureAwait(false);
+        if (player is null)
+        {
+            return NotFound();
+        }
+
+        var track = index == 0 ? player.CurrentItem : player.Queue.ElementAt(index);
+        if (track is null)
+            return NotFound();
+
+        await _databaseService
+            .UpdateUserAsync(
+                userId,
+                x =>
+                {
+                    if (x.FavoriteSongs.Contains(track.Track!.ToString()))
+                    {
+                        x.FavoriteSongs.Remove(track.Track.ToString());
+                    }
+                    else
+                    {
+                        x.FavoriteSongs.Add(track.Track.ToString());
+                    }
+                }
+            )
+            .ConfigureAwait(false);
+
         return Ok();
     }
 
