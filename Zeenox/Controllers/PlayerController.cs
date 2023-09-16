@@ -27,18 +27,6 @@ public class PlayerController : ControllerBase
         _client = client;
     }
 
-    [HttpGet(Name = "GetAvailableGuilds")]
-    public IActionResult GetAvailableGuilds(ulong userId)
-    {
-        var guilds = _client.Guilds.Where(
-            x =>
-                x.Users.Select(y => y.Id).Contains(userId)
-                && x.Users.First(z => z.Id == userId).GuildPermissions.ManageGuild
-        );
-        var guildsList = guilds.Select(GuildInfo.FromSocketGuild);
-        return Ok(JsonConvert.SerializeObject(guildsList));
-    }
-
     [HttpGet(Name = "GetPlayer")]
     public async Task<IActionResult> GetPlayer(ulong guildId)
     {
