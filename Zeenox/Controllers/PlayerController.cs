@@ -1,7 +1,5 @@
-﻿using Discord.WebSocket;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
-using Zeenox.Models;
 using Zeenox.Services;
 using SocketMessage = Zeenox.Models.SocketMessage;
 
@@ -14,17 +12,14 @@ public class PlayerController : ControllerBase
 {
     private readonly MusicService _musicService;
     private readonly DatabaseService _databaseService;
-    private readonly DiscordSocketClient _client;
 
     public PlayerController(
         MusicService musicService,
-        DatabaseService databaseService,
-        DiscordSocketClient client
+        DatabaseService databaseService
     )
     {
         _musicService = musicService;
         _databaseService = databaseService;
-        _client = client;
     }
 
     [HttpGet(Name = "GetPlayer")]
