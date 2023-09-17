@@ -201,6 +201,7 @@ public class PlayerController : ControllerBase
         try
         {
             await _musicService.SetVolumeAsync(guildId, volume).ConfigureAwait(false);
+            await _musicService.UpdateSocketsAsync(guildId, updatePlayer: true).ConfigureAwait(false);
             return Ok();
         }
         catch (Exception e)
@@ -215,6 +216,7 @@ public class PlayerController : ControllerBase
         try
         {
             await _musicService.CycleLoopModeAsync(guildId).ConfigureAwait(false);
+            await _musicService.UpdateSocketsAsync(guildId, updatePlayer: true).ConfigureAwait(false);
             return Ok();
         }
         catch (Exception e)
@@ -233,7 +235,7 @@ public class PlayerController : ControllerBase
         }
 
         await player.ShuffleAsync().ConfigureAwait(false);
-        await _musicService.UpdateSocketsAsync(guildId, true).ConfigureAwait(false);
+        await _musicService.UpdateSocketsAsync(guildId, updateQueue: true).ConfigureAwait(false);
         return Ok();
     }
 
@@ -247,7 +249,7 @@ public class PlayerController : ControllerBase
         }
 
         await player.DistinctQueueAsync().ConfigureAwait(false);
-        await _musicService.UpdateSocketsAsync(guildId, true).ConfigureAwait(false);
+        await _musicService.UpdateSocketsAsync(guildId, updateQueue: true).ConfigureAwait(false);
         return Ok();
     }
 
@@ -261,7 +263,7 @@ public class PlayerController : ControllerBase
         }
 
         await player.ClearQueueAsync().ConfigureAwait(false);
-        await _musicService.UpdateSocketsAsync(guildId, true).ConfigureAwait(false);
+        await _musicService.UpdateSocketsAsync(guildId, updateQueue: true).ConfigureAwait(false);
         return Ok();
     }
 
@@ -275,7 +277,7 @@ public class PlayerController : ControllerBase
         }
 
         await player.ShuffleAsync().ConfigureAwait(false);
-        await _musicService.UpdateSocketsAsync(guildId, true).ConfigureAwait(false);
+        await _musicService.UpdateSocketsAsync(guildId, updateQueue: true).ConfigureAwait(false);
         return Ok();
     }
 }
