@@ -31,6 +31,18 @@
     "name": "clear",
     "description": "Törli a várólistát."
   },
+  "move": {
+    "name": "move",
+    "description": "Áthelyez egy zeneszámot a várólistán a megadott pozícióba.",
+    "from": {
+      "name": "from",
+      "description": "A zeneszám jelenlegi pozíciója a várólistán."
+    },
+    "to": {
+      "name": "to",
+      "description": "A zeneszám új pozíciója a várólistán."
+    }
+  },
   "reverse": {
     "name": "reverse",
     "description": "Megfordítja a várólista sorrendjét."
