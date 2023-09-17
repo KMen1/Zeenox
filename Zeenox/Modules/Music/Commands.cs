@@ -278,6 +278,23 @@ public class Commands : MusicBase
             .UpdateSocketsAsync(Context.Guild.Id, updateQueue: true)
             .ConfigureAwait(false);
     }
+    
+    [RequireWhitelistedChannel]
+    [RequireWhitelistedRole]
+    [SlashCommand("move", "Moves a track in the queue from the specified position to another.")]
+    public async Task MoveAsync([MinValue(1)]int from, [MinValue(2)] int to)
+    {
+        await DeferAsync(true).ConfigureAwait(false);
+        var player = await TryGetPlayerAsync().ConfigureAwait(false);
+        if (player is null)
+            return;
+
+        await player.MoveTrackAsync(from - 1, to - 1).ConfigureAwait(false);
+        await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
+        await MusicService
+            .UpdateSocketsAsync(Context.Guild.Id, updateQueue: true)
+            .ConfigureAwait(false);
+    }
 
     [RequireWhitelistedChannel]
     [RequireWhitelistedRole]
