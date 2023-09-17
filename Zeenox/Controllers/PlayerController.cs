@@ -94,6 +94,20 @@ public class PlayerController : ControllerBase
         return Ok();
     }
 
+    [HttpPost(Name = "Move")]
+    public async Task<IActionResult> Move(ulong guildId, ulong userId, int from, int to)
+    {
+        var player = await _musicService.TryGetPlayerAsync(guildId).ConfigureAwait(false);
+        if (player is null)
+        {
+            return NotFound();
+        }
+        
+        await player.MoveTrackAsync(from, to).ConfigureAwait(false);
+        await _musicService.UpdateSocketsAsync(guildId, updateQueue: true).ConfigureAwait(false);
+        return Ok();
+    }
+
     [HttpPost(Name = "Next")]
     public async Task<IActionResult> Next(ulong guildId, ulong userId)
     {
