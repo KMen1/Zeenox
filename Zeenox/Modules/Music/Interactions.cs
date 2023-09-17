@@ -55,6 +55,7 @@ public class Interactions : MusicBase
             await player.PauseAsync().ConfigureAwait(false);
         }
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
+        await MusicService.UpdateSocketsAsync(Context.Guild.Id, true).ConfigureAwait(false);
     }
 
     [ComponentInteraction("skip")]
@@ -94,6 +95,7 @@ public class Interactions : MusicBase
             .SetLoopModeAsync(shouldDisable ? 0 : player.RepeatMode + 1)
             .ConfigureAwait(false);
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
+        await MusicService.UpdateSocketsAsync(Context.Guild.Id, true).ConfigureAwait(false);
     }
 
     [ComponentInteraction("stop")]

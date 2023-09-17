@@ -233,6 +233,7 @@ public class PlayerController : ControllerBase
         }
 
         await player.ShuffleAsync().ConfigureAwait(false);
+        await _musicService.UpdateSocketsAsync(guildId, true).ConfigureAwait(false);
         return Ok();
     }
 
@@ -246,6 +247,7 @@ public class PlayerController : ControllerBase
         }
 
         await player.DistinctQueueAsync().ConfigureAwait(false);
+        await _musicService.UpdateSocketsAsync(guildId, true).ConfigureAwait(false);
         return Ok();
     }
 
@@ -259,6 +261,7 @@ public class PlayerController : ControllerBase
         }
 
         await player.ClearQueueAsync().ConfigureAwait(false);
+        await _musicService.UpdateSocketsAsync(guildId, true).ConfigureAwait(false);
         return Ok();
     }
 
@@ -272,6 +275,7 @@ public class PlayerController : ControllerBase
         }
 
         await player.ShuffleAsync().ConfigureAwait(false);
+        await _musicService.UpdateSocketsAsync(guildId, true).ConfigureAwait(false);
         return Ok();
     }
 }
