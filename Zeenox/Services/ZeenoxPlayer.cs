@@ -26,14 +26,13 @@ public sealed class ZeenoxPlayer : VoteLavalinkPlayer
         if (tracks.Length == 0)
             return 0;
 
-
         if (CurrentItem is not null)
         {
             await PlayAsync(tracks[0]).ConfigureAwait(false);
             await Queue.AddRangeAsync(tracks[1..]).ConfigureAwait(false);
             return 1;
         }
-        
+
         await Queue.AddRangeAsync(tracks[1..]).ConfigureAwait(false);
         await PlayAsync(tracks[0], false).ConfigureAwait(false);
         return 0;
@@ -187,7 +186,12 @@ public sealed class ZeenoxPlayer : VoteLavalinkPlayer
     private ComponentBuilder GetButtons(ZeenoxTrackItem? track)
     {
         return track is null
-            ? new ComponentBuilder().WithButton("Disconnect Now", "disconnect", ButtonStyle.Danger, new Emoji("⚠️"))
+            ? new ComponentBuilder().WithButton(
+                "Disconnect Now",
+                "disconnect",
+                ButtonStyle.Danger,
+                new Emoji("⚠️")
+            )
             : new NowPlayingButtons(Queue, State is PlayerState.Paused, Volume, RepeatMode);
     }
 
@@ -209,5 +213,19 @@ public sealed class ZeenoxPlayer : VoteLavalinkPlayer
                 RepeatMode
             }
         );
+    }
+
+    public async Task MoveTrackAsync(int from, int to)
+    {
+        if (from < 0 || from >= Queue.Count)
+            return;
+
+        if (to < 0 || to >= Queue.Count)
+            return;
+
+        var track = Queue[from];
+        await Queue.RemoveAtAsync(from).ConfigureAwait(false);
+        await Queue.InsertAsync(to, track).ConfigureAwait(false);
+        await UpdateMessageAsync().ConfigureAwait(false);
     }
 }
