@@ -11,7 +11,8 @@ public class PlayerData
         PlayerState state,
         TrackRepeatMode repeatMode,
         int volume,
-        int position
+        int position,
+        List<DiscordUserData> listeners
     )
     {
         ShouldUpdate = shouldUpdate;
@@ -19,6 +20,7 @@ public class PlayerData
         RepeatMode = repeatMode;
         Volume = volume;
         Position = position;
+        Listeners = listeners;
     }
 
     public bool ShouldUpdate { get; init; }
@@ -26,6 +28,7 @@ public class PlayerData
     public TrackRepeatMode RepeatMode { get; init; }
     public int Volume { get; init; }
     public int Position { get; init; }
+    public List<DiscordUserData> Listeners { get; init; }
 
     public static PlayerData FromZeenoxPlayer(ZeenoxPlayer player)
     {
@@ -34,10 +37,11 @@ public class PlayerData
             player.State,
             player.RepeatMode,
             (int)Math.Round(player.Volume * 200),
-            player.Position.HasValue ? (int)player.Position.Value.Position.TotalSeconds : 0
+            player.Position.HasValue ? (int)player.Position.Value.Position.TotalSeconds : 0,
+            player.VoiceChannel.ConnectedUsers.Where(x => !x.IsBot).Select(DiscordUserData.FromUser).ToList()
         );
     }
 
     public static PlayerData Empty =>
-        new(false, PlayerState.NotPlaying, TrackRepeatMode.None, 0, 0);
+        new(false, PlayerState.NotPlaying, TrackRepeatMode.None, 0, 0, Array.Empty<DiscordUserData>().ToList());
 }

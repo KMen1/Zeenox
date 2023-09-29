@@ -1,4 +1,5 @@
 ﻿using Discord;
+using Discord.WebSocket;
 using Lavalink4NET.Players;
 using Lavalink4NET.Players.Queued;
 using Lavalink4NET.Players.Vote;
@@ -17,7 +18,7 @@ public sealed class ZeenoxPlayer : VoteLavalinkPlayer
     }
 
     private ITextChannel TextChannel { get; }
-    private IVoiceChannel VoiceChannel { get; }
+    public SocketVoiceChannel VoiceChannel { get; }
     private IUserMessage? NowPlayingMessage { get; set; }
 
     public async Task<int> PlayAsync(IEnumerable<ZeenoxTrackItem> tracksEnumerable)

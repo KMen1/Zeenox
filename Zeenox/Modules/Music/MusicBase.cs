@@ -1,5 +1,6 @@
 ﻿using System.Collections.Immutable;
 using Discord;
+using Discord.WebSocket;
 using Lavalink4NET;
 using Lavalink4NET.Clients;
 using Lavalink4NET.Players;
@@ -29,7 +30,9 @@ public class MusicBase : ModuleBase
             (properties, _) =>
             {
                 properties.Options.Value.TextChannel = (ITextChannel)Context.Channel;
-                properties.Options.Value.VoiceChannel = voiceState!.VoiceChannel;
+                properties.Options.Value.VoiceChannel = (
+                    voiceState!.VoiceChannel as SocketVoiceChannel
+                )!;
                 return ValueTask.FromResult(new ZeenoxPlayer(properties));
             }
         );
