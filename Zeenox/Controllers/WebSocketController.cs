@@ -1,8 +1,10 @@
-﻿using System.Net.WebSockets;
+﻿using System.IdentityModel.Tokens.Jwt;
+using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using Lavalink4NET.Players;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
 using Zeenox.Models;
 using Zeenox.Services;
 
@@ -14,21 +16,23 @@ namespace Zeenox.Controllers;
 public class WebSocketController : ControllerBase
 {
     private readonly MusicService _musicService;
+    private static string JWTSECRET;
 
-    public WebSocketController(MusicService musicService)
+    public WebSocketController(MusicService musicService, IConfiguration configuration)
     {
         _musicService = musicService;
+        JWTSECRET = configuration["JwtSettings:Key"]!;
     }
 
     [HttpGet(Name = "Connect")]
-    public async Task Connect(ulong guildId, ulong userId)
+    public async Task Connect(ulong id)
     {
         if (HttpContext.WebSockets.IsWebSocketRequest)
         {
             using var webSocket = await HttpContext.WebSockets
                 .AcceptWebSocketAsync()
                 .ConfigureAwait(false);
-            await SetupSocketAsync(webSocket, guildId, userId).ConfigureAwait(false);
+            await SetupSocketAsync(webSocket, id).ConfigureAwait(false);
         }
         else
         {
@@ -36,9 +40,42 @@ public class WebSocketController : ControllerBase
         }
     }
 
-    private async Task SetupSocketAsync(WebSocket socket, ulong guildId, ulong userId)
+    private static ulong GetSocketInfo(string token)
     {
+        var handler = new JwtSecurityTokenHandler();
+        var validations = new TokenValidationParameters
+        {
+            ValidIssuer = "https://zeenox.gg",
+            ValidAudience = "https://zeenox.gg",
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(JWTSECRET!)),
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true
+        };
+        var claims = handler.ValidateToken(token, validations, out var tokenSecure);
+        return ulong.Parse(claims.FindFirst("userId")!.Value);
+    }
+
+    private async Task SetupSocketAsync(WebSocket socket, ulong guildId)
+    {
+        var buffer = new byte[1024 * 4];
+        var receiveResult = await socket
+            .ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None)
+            .ConfigureAwait(false);
+
+        var jwt = Encoding.UTF8.GetString(buffer, 0, receiveResult.Count);
+        var userId = GetSocketInfo(jwt);
+
         _musicService.AddWebSocket(guildId, socket);
+        await socket
+            .SendAsync(
+                "Connected"u8.ToArray(),
+                WebSocketMessageType.Text,
+                true,
+                CancellationToken.None
+            )
+            .ConfigureAwait(false);
 
         using var cts = new CancellationTokenSource();
         var token = cts.Token;

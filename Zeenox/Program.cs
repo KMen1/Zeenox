@@ -1,3 +1,4 @@
+using System.Text;
 using Discord;
 using Discord.Addons.Hosting;
 using Discord.Interactions;
@@ -7,7 +8,9 @@ using Lavalink4NET.Extensions;
 using Lavalink4NET.InactivityTracking;
 using Lavalink4NET.InactivityTracking.Extensions;
 using Lavalink4NET.Lyrics.Extensions;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc.Versioning;
+using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using Serilog;
 using Zeenox.Services;
@@ -19,7 +22,7 @@ Log.Logger = new LoggerConfiguration().Enrich
     .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);
-
+var config = builder.Configuration;
 builder.Host
     .UseSerilog()
     .ConfigureDiscordHost(
@@ -83,6 +86,42 @@ builder.Host
                 .AddMemoryCache()
     );
 
+builder.Services
+    .AddAuthentication(x =>
+    {
+        x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        x.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        x.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(x =>
+    {
+        x.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidIssuer = config["JwtSettings:Issuer"],
+            ValidAudience = config["JwtSettings:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(config["JwtSettings:Key"]!)
+            ),
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true
+        };
+    });
+
+builder.Services.AddCors(x =>
+{
+    x.AddPolicy(
+        "origin",
+        y =>
+        {
+            y.WithOrigins("localhost");
+        }
+    );
+});
+
+builder.Services.AddAuthorization();
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -107,9 +146,13 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+app.UseHttpsRedirection(); 
+//app.UseCors("origin");
+
+app.UseAuthentication();
 app.UseAuthorization();
 app.UseWebSockets();
+
 app.MapControllers();
 
 if (app.Environment.IsDevelopment())
