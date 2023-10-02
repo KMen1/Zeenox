@@ -1,13 +1,13 @@
 name: Deploy Zeenox To Server
 on: [push]
 jobs:
-  pull:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Stop Process
         uses: garygrossgarten/github-action-ssh@release
         with:
-          command: screen -X -S ZEENOX quit
+          command: screen -X -S ZEENOX quit 2>/dev/null
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           password: ${{ secrets.PASSWORD }}
