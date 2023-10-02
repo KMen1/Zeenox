@@ -1,0 +1,48 @@
+name: Deploy Zeenox To Server
+on: [push]
+jobs:
+  pull:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Stop Process
+        uses: garygrossgarten/github-action-ssh@release
+        with:
+          command: screen -X -S ZEENOX quit
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+      - name: Pull Changes
+        uses: garygrossgarten/github-action-ssh@release
+        with:
+          command: cd Zeenox && git pull
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+      - name: Restore Project
+        uses: garygrossgarten/github-action-ssh@release
+        with:
+          command: cd Zeenox/Zeenox && dotnet restore "Zeenox.csproj"
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+      - name: Build Project
+        uses: garygrossgarten/github-action-ssh@release
+        with:
+          command: cd Zeenox/Zeenox && dotnet build "Zeenox.csproj" -c Release -o /app/build
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+      - name: Publish Project
+        uses: garygrossgarten/github-action-ssh@release
+        with:
+          command: cd Zeenox/Zeenox && dotnet publish "Zeenox.csproj" -c Release -o /app/publish /p:UseAppHost=false
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+      - name: Start Process
+        uses: garygrossgarten/github-action-ssh@release
+        with:
+          command: cd /app/publish && screen -d -m -S ZEENOX bash -c 'dotnet Zeenox.dll'
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
