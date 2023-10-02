@@ -7,7 +7,7 @@ jobs:
       - name: Stop Process
         uses: garygrossgarten/github-action-ssh@release
         with:
-          command: screen -X -S ZEENOX quit 2>/dev/null
+          command: screen -X -S ZEENOX quit || true
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           password: ${{ secrets.PASSWORD }}
