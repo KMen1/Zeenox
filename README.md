@@ -3,6 +3,7 @@
 [![Discord](https://discordapp.com/api/guilds/863751874922676234/widget.png)](https://discord.gg/hGxaMkfMBR)
 [![License](https://img.shields.io/github/license/kmen1/kbot)](https://github.com/KMen1/Zeenox/blob/main/LICENSE)
 [![CodeFactor](https://www.codefactor.io/repository/github/kmen1/zeenox/badge)](https://www.codefactor.io/repository/github/kmen1/zeenox)
+[![Deploy](https://github.com/KMen1/Zeenox/actions/workflows/deploy.yml/badge.svg)](https://github.com/KMen1/Zeenox/actions/workflows/deploy.yml)
 
 A Discord music bot that focuses on speed and ease of usability, with a web dashboard, all for completely free. Allows playback from Spotify, YouTube, SoundCloud, BandCamp, Twitch
 
