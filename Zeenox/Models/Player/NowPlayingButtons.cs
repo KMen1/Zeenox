@@ -1,7 +1,7 @@
 ﻿using Discord;
 using Lavalink4NET.Players.Queued;
 
-namespace Zeenox.Models;
+namespace Zeenox.Models.Player;
 
 public class NowPlayingButtons : ComponentBuilder
 {
@@ -47,6 +47,5 @@ public class NowPlayingButtons : ComponentBuilder
             disabled: Math.Abs(volume - 0.5f) < 0.01f,
             row: 1
         );
-        WithButton("Favorite", "favorite", emote: new Emoji("❤️"), row: 1);
     }
 }

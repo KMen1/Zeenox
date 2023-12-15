@@ -6,6 +6,7 @@ using Lavalink4NET.Clients;
 using Lavalink4NET.Players;
 using Lavalink4NET.Players.Preconditions;
 using Microsoft.Extensions.Options;
+using Zeenox.Players;
 using Zeenox.Services;
 
 namespace Zeenox.Modules.Music;
@@ -16,7 +17,7 @@ public class MusicBase : ModuleBase
     public MusicService MusicService { get; set; } = null!;
     public DatabaseService DatabaseService { get; set; } = null!;
 
-    protected async ValueTask<ZeenoxPlayer?> TryGetPlayerAsync(
+    protected async ValueTask<LoggedPlayer?> TryGetPlayerAsync(
         bool allowConnect = false,
         bool requireChannel = true,
         ImmutableArray<IPlayerPrecondition> preconditions = default,
@@ -26,14 +27,14 @@ public class MusicBase : ModuleBase
     {
         cancellationToken.ThrowIfCancellationRequested();
         var voiceState = Context.User as IVoiceState;
-        var factory = new PlayerFactory<ZeenoxPlayer, ZeenoxPlayerOptions>(
+        var factory = new PlayerFactory<LoggedPlayer, InteractivePlayerOptions>(
             (properties, _) =>
             {
                 properties.Options.Value.TextChannel = (ITextChannel)Context.Channel;
                 properties.Options.Value.VoiceChannel = (
                     voiceState!.VoiceChannel as SocketVoiceChannel
                 )!;
-                return ValueTask.FromResult(new ZeenoxPlayer(properties));
+                return ValueTask.FromResult(new LoggedPlayer(properties));
             }
         );
 
@@ -54,13 +55,13 @@ public class MusicBase : ModuleBase
                 Context.Guild.Id,
                 voiceState!.VoiceChannel?.Id,
                 playerFactory: factory,
-                options: new OptionsWrapper<ZeenoxPlayerOptions>(
-                    new ZeenoxPlayerOptions
+                options: new OptionsWrapper<InteractivePlayerOptions>(
+                    new InteractivePlayerOptions
                     {
                         SelfDeaf = true,
                         InitialVolume =
                             (float)Math.Floor(guildConfig.MusicSettings.DefaultVolume / (double)2)
-                            / 100f
+                            / 100f,
                     }
                 ),
                 retrieveOptions,
@@ -87,7 +88,7 @@ public class MusicBase : ModuleBase
         return null;
     }
 
-    private static Embed CreateErrorEmbed(PlayerResult<ZeenoxPlayer> result)
+    private static Embed CreateErrorEmbed(PlayerResult<LoggedPlayer> result)
     {
         var title = result.Status switch
         {

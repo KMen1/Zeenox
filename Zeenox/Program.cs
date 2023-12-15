@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Mvc.Versioning;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using Serilog;
+using Zeenox;
 using Zeenox.Services;
 
 Log.Logger = new LoggerConfiguration().Enrich
@@ -26,9 +27,9 @@ var config = builder.Configuration;
 builder.Host
     .UseSerilog()
     .ConfigureDiscordHost(
-        (context, config) =>
+        (context, discordConfig) =>
         {
-            config.SocketConfig = new DiscordSocketConfig
+            discordConfig.SocketConfig = new DiscordSocketConfig
             {
 #if DEBUG
                 LogLevel = LogSeverity.Verbose,
@@ -41,20 +42,23 @@ builder.Host
                 LogGatewayIntentWarnings = false,
                 DefaultRetryMode = RetryMode.AlwaysFail
             };
-            config.Token = context.Configuration.GetSection("Discord")["Token"]!;
+            discordConfig.Token = context.Configuration.GetSection("Discord")["Token"]!;
         }
     )
     .UseInteractionService(
-        (_, config) =>
+        (_, interactionConfig) =>
         {
-            config.DefaultRunMode = RunMode.Async;
+            interactionConfig.DefaultRunMode = RunMode.Async;
 #if DEBUG
-            config.LogLevel = LogSeverity.Verbose;
+            interactionConfig.LogLevel = LogSeverity.Verbose;
 #elif RELEASE
-            config.LogLevel = LogSeverity.Info;
+            interactionConfig.LogLevel = LogSeverity.Info;
 #endif
-            config.UseCompiledLambda = true;
-            config.LocalizationManager = new JsonLocalizationManager("/", "CommandLocale");
+            interactionConfig.UseCompiledLambda = true;
+            interactionConfig.LocalizationManager = new JsonLocalizationManager(
+                "/",
+                "CommandLocale"
+            );
         }
     )
     .ConfigureServices(
@@ -104,12 +108,12 @@ builder.Services
             ),
             ValidateIssuer = true,
             ValidateAudience = true,
-            ValidateLifetime = true,
+            ValidateLifetime = false,
             ValidateIssuerSigningKey = true
         };
     });
 
-builder.Services.AddCors(x =>
+/*builder.Services.AddCors(x =>
 {
     x.AddPolicy(
         "origin",
@@ -118,7 +122,7 @@ builder.Services.AddCors(x =>
             y.WithOrigins("localhost");
         }
     );
-});
+});*/
 
 builder.Services.AddAuthorization();
 
@@ -146,20 +150,16 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection(); 
+//app.UseHttpsRedirection();
+
 //app.UseCors("origin");
 
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseWebSockets();
 
+app.UseMiddleware<ErrorHandlingMiddleware>();
+
 app.MapControllers();
 
-if (app.Environment.IsDevelopment())
-{
-    app.Run();
-}
-else
-{
-    app.Run("http://*:80");
-}
+app.Run();

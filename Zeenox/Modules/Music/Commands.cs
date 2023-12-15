@@ -5,7 +5,7 @@ using Fergun.Interactive;
 using Fergun.Interactive.Pagination;
 using Lavalink4NET.Players;
 using Lavalink4NET.Rest.Entities.Tracks;
-using Zeenox.Models;
+using Zeenox.Models.Player;
 using Zeenox.Modules.Music.Preconditions;
 
 namespace Zeenox.Modules.Music;
@@ -14,6 +14,43 @@ namespace Zeenox.Modules.Music;
 public class Commands : MusicBase
 {
     public InteractiveService InteractiveService { get; set; } = null!;
+
+    [SlashCommand("actionhistory", "Shows every action that has been performed on the player.")]
+    public async Task ShowActionHistoryAsync()
+    {
+        var player = await TryGetPlayerAsync(isDeferred: true).ConfigureAwait(false);
+        if (player is null)
+            return;
+        var actions = player.StringifyActions();
+
+        var builder = new StringBuilder();
+        var pages = actions
+            .Chunk(10)
+            .Select(x =>
+            {
+                foreach (var action in x)
+                {
+                    builder.AppendLine(action);
+                }
+
+                var pageBuilder = new PageBuilder()
+                    .WithTitle("Listing all actions")
+                    .WithDescription(builder.ToString());
+                builder.Clear();
+                return pageBuilder;
+            });
+
+        var paginator = new StaticPaginatorBuilder().WithPages(pages).Build();
+
+        await InteractiveService
+            .SendPaginatorAsync(
+                paginator,
+                Context.Interaction,
+                ephemeral: true,
+                timeout: TimeSpan.FromMinutes(5)
+            )
+            .ConfigureAwait(false);
+    }
 
     [RequireWhitelistedChannel]
     [RequireWhitelistedRole]
@@ -61,55 +98,26 @@ public class Commands : MusicBase
 
         var tracks = results.Tracks.ToList();
 
-        var index = results.Playlist is not null
-            ? await player
+        if (results.Playlist is not null)
+        {
+            await player
                 .PlayAsync(
-                    tracks.Select(x => new ZeenoxTrackItem(new TrackReference(x), Context.User))
+                    Context.User,
+                    tracks.Select(x => new ExtendedTrackItem(new TrackReference(x), Context.User))
                 )
-                .ConfigureAwait(false)
-            : await player
-                .PlayAsync(new ZeenoxTrackItem(new TrackReference(tracks[0]), Context.User))
                 .ConfigureAwait(false);
+        }
+        else
+        {
+            await player
+                .PlayAsync(
+                    Context.User,
+                    new ExtendedTrackItem(new TrackReference(tracks[0]), Context.User)
+                )
+                .ConfigureAwait(false);
+        }
 
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
-
-        if (index != 0)
-        {
-            await MusicService
-                .UpdateSocketsAsync(Context.Guild.Id, updateQueue: true)
-                .ConfigureAwait(false);
-        }
-    }
-
-    [RequireWhitelistedChannel]
-    [RequireWhitelistedRole]
-    [SlashCommand(
-        "play-fav",
-        "Plays all of your favorited songs. The bot will join the channel you are currently in."
-    )]
-    public async Task PlayFavAsync()
-    {
-        await DeferAsync(true).ConfigureAwait(false);
-
-        var favorites = (
-            await DatabaseService.GetUserAsync(Context.User.Id).ConfigureAwait(false)
-        ).FavoriteSongs;
-        if (favorites.Count == 0)
-        {
-            await FollowupAsync("You don't have any favorite songs", ephemeral: true)
-                .ConfigureAwait(false);
-            return;
-        }
-
-        var player = await TryGetPlayerAsync(true, isDeferred: true).ConfigureAwait(false);
-        if (player is null)
-            return;
-
-        var tracks = favorites.Select(
-            x => new ZeenoxTrackItem(new TrackReference(x), Context.User)
-        );
-        await player.PlayAsync(tracks).ConfigureAwait(false);
-        await FollowupAsync("✅").ConfigureAwait(false);
     }
 
     [RequireWhitelistedChannel]
@@ -131,11 +139,8 @@ public class Commands : MusicBase
             return;
         }
 
-        await player.SkipToAsync(index - 1).ConfigureAwait(false);
+        await player.SkipToAsync(Context.User, index - 1).ConfigureAwait(false);
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
-        await MusicService
-            .UpdateSocketsAsync(Context.Guild.Id, updateQueue: true)
-            .ConfigureAwait(false);
     }
 
     [RequireWhitelistedChannel]
@@ -157,11 +162,8 @@ public class Commands : MusicBase
             return;
         }
 
-        await player.RemoveAsync(index - 1).ConfigureAwait(false);
+        await player.RemoveAsync(Context.User, index - 1).ConfigureAwait(false);
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
-        await MusicService
-            .UpdateSocketsAsync(Context.Guild.Id, updateQueue: true)
-            .ConfigureAwait(false);
     }
 
     [RequireWhitelistedChannel]
@@ -176,9 +178,7 @@ public class Commands : MusicBase
         if (player is null)
             return;
 
-        await player
-            .SetVolumeAsync((float)Math.Floor(volume / (double)2) / 100f)
-            .ConfigureAwait(false);
+        await player.SetVolumeAsync(Context.User, volume).ConfigureAwait(false);
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
     }
 
@@ -192,11 +192,8 @@ public class Commands : MusicBase
         if (player is null)
             return;
 
-        await player.ShuffleAsync().ConfigureAwait(false);
+        await player.ShuffleAsync(Context.User).ConfigureAwait(false);
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
-        await MusicService
-            .UpdateSocketsAsync(Context.Guild.Id, updateQueue: true)
-            .ConfigureAwait(false);
     }
 
     [RequireWhitelistedChannel]
@@ -209,11 +206,8 @@ public class Commands : MusicBase
         if (player is null)
             return;
 
-        await player.DistinctQueueAsync().ConfigureAwait(false);
+        await player.DistinctQueueAsync(Context.User).ConfigureAwait(false);
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
-        await MusicService
-            .UpdateSocketsAsync(Context.Guild.Id, updateQueue: true)
-            .ConfigureAwait(false);
     }
 
     [RequireWhitelistedChannel]
@@ -234,7 +228,7 @@ public class Commands : MusicBase
         var builder = new StringBuilder();
         var index = 0;
         var pages = queue
-            .Select(x => x.GetTitle())
+            .Select(x => ((ExtendedTrackItem)x).Title)
             .Chunk(10)
             .Select(x =>
             {
@@ -242,6 +236,7 @@ public class Commands : MusicBase
                 {
                     builder.AppendLine($"`{i + 1 + index}. {x[i]}`");
                 }
+
                 index += x.Length;
                 var pageBuilder = new PageBuilder()
                     .WithTitle("Current Queue")
@@ -272,17 +267,14 @@ public class Commands : MusicBase
         if (player is null)
             return;
 
-        await player.ClearQueueAsync().ConfigureAwait(false);
+        await player.ClearQueueAsync(Context.User).ConfigureAwait(false);
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
-        await MusicService
-            .UpdateSocketsAsync(Context.Guild.Id, updateQueue: true)
-            .ConfigureAwait(false);
     }
-    
+
     [RequireWhitelistedChannel]
     [RequireWhitelistedRole]
     [SlashCommand("move", "Moves a track in the queue from the specified position to another.")]
-    public async Task MoveAsync([MinValue(1)]int from, [MinValue(2)] int to)
+    public async Task MoveAsync([MinValue(1)] int from, [MinValue(2)] int to)
     {
         await DeferAsync(true).ConfigureAwait(false);
         var player = await TryGetPlayerAsync().ConfigureAwait(false);
@@ -291,9 +283,6 @@ public class Commands : MusicBase
 
         await player.MoveTrackAsync(from - 1, to - 1).ConfigureAwait(false);
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
-        await MusicService
-            .UpdateSocketsAsync(Context.Guild.Id, updateQueue: true)
-            .ConfigureAwait(false);
     }
 
     [RequireWhitelistedChannel]
@@ -306,11 +295,8 @@ public class Commands : MusicBase
         if (player is null)
             return;
 
-        await player.ReverseQueueAsync().ConfigureAwait(false);
+        await player.ReverseQueueAsync(Context.User).ConfigureAwait(false);
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
-        await MusicService
-            .UpdateSocketsAsync(Context.Guild.Id, updateQueue: true)
-            .ConfigureAwait(false);
     }
 
     [RequireWhitelistedChannel]

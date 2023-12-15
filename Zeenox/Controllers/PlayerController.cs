@@ -1,367 +1,298 @@
 ﻿using System.Security.Claims;
+using Discord;
+using Discord.WebSocket;
+using Lavalink4NET;
+using Lavalink4NET.Players;
+using Lavalink4NET.Rest.Entities.Tracks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Newtonsoft.Json;
+using Zeenox.Models.Player;
+using Zeenox.Players;
 using Zeenox.Services;
-using SocketMessage = Zeenox.Models.SocketMessage;
 
 namespace Zeenox.Controllers;
 
 [Authorize]
 [ApiController]
-[Route("api/v{version:apiVersion}/[controller]/[action]")]
+[ProducesResponseType(StatusCodes.Status404NotFound)]
+[Route("api/v{version:apiVersion}/[controller]")]
 [ApiVersion("1.0")]
-public class PlayerController : ControllerBase
+public class PlayerController(MusicService musicService, DiscordSocketClient client, IAudioService audioService) : ControllerBase
 {
-    private readonly MusicService _musicService;
-    private readonly DatabaseService _databaseService;
-
-    public PlayerController(MusicService musicService, DatabaseService databaseService)
-    {
-        _musicService = musicService;
-        _databaseService = databaseService;
-    }
-
-    [HttpGet(Name = "GetPlayer")]
-    public async Task<IActionResult> GetPlayer()
+    private async Task<(IUser, LoggedPlayer?)> GetPlayerAndUserAsync()
     {
         var identity = HttpContext.User.Identity as ClaimsIdentity;
-        var guildId = ulong.Parse(identity!.FindFirst("guildId")!.Value);
+        var guildId = identity?.GetGuildId();
+        var userId = identity?.GetUserId();
 
-        var player = await _musicService.TryGetPlayerAsync(guildId).ConfigureAwait(false);
-        if (player is null)
-        {
-            return Content(
-                JsonConvert.SerializeObject(SocketMessage.Empty),
-                "application/json"
-            );
-        }
-
-        return Content(
-            JsonConvert.SerializeObject(SocketMessage.FromZeenoxPlayer(player, true, true, true)),
-            "application/json"
-        );
+        var player = await musicService.TryGetPlayerAsync(guildId.GetValueOrDefault()).ConfigureAwait(false);
+        return (client.GetUser(userId!.Value), player);
     }
 
-    [HttpGet]
-    public async Task<IActionResult> GetFavoriteTracks()
-    {
-        var identity = HttpContext.User.Identity as ClaimsIdentity;
-        var userId = ulong.Parse(identity!.FindFirst("userId")!.Value);
-
-        var user = await _databaseService.GetUserAsync(userId).ConfigureAwait(false);
-        return Ok(user.FavoriteSongs);
-    }
-
+    [Route("lyrics")]
     [HttpGet]
     public async Task<IActionResult> GetLyrics()
     {
         var identity = HttpContext.User.Identity as ClaimsIdentity;
         var guildId = ulong.Parse(identity!.FindFirst("guildId")!.Value);
 
-        var lyrics = await _musicService.GetLyricsAsync(guildId).ConfigureAwait(false);
+        var lyrics = await musicService.GetLyricsAsync(guildId).ConfigureAwait(false);
         return lyrics is null ? NotFound() : Ok(lyrics);
     }
 
+    [Route("play")]
+    [HttpPost]
+    public async Task<IActionResult> Play([FromQuery] string url)
+    {
+        var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
+        if (player is null)
+        {
+            return NotFound();
+        }
+        
+        var result = await audioService.Tracks.LoadTracksAsync(url, new TrackLoadOptions { SearchMode = TrackSearchMode.None, StrictSearch = true }).ConfigureAwait(false);
+        if (!result.IsSuccess)
+        {
+            return NotFound();
+        }
+
+        if (result.IsPlaylist)
+        {
+            await player.PlayAsync(user, result.Tracks.Select(x => new ExtendedTrackItem(new TrackReference(x), user))).ConfigureAwait(false);
+            return Ok();
+        }
+        
+        await player.PlayAsync(user, new ExtendedTrackItem(new TrackReference(result.Tracks[0]), user), false).ConfigureAwait(false);
+        return Ok();
+    }
+    
+    [Route("add")]
+    [HttpPost]
+    public async Task<IActionResult> Add([FromQuery] string url)
+    {
+        var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
+        if (player is null)
+        {
+            return NotFound();
+        }
+        
+        var track = await audioService.Tracks.LoadTrackAsync(url, new TrackLoadOptions { SearchMode = TrackSearchMode.None, StrictSearch = true }).ConfigureAwait(false);
+        if (track is null)
+        {
+            return NotFound();
+        }
+        
+        await player.PlayAsync(user, new ExtendedTrackItem(new TrackReference(track), user)).ConfigureAwait(false);
+        return Ok();
+    }
+
+    [Route("pause")]
     [HttpPost]
     public async Task<IActionResult> Pause()
     {
-        var identity = HttpContext.User.Identity as ClaimsIdentity;
-        var guildId = ulong.Parse(identity!.FindFirst("guildId")!.Value);
+        var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
+        if (player is null)
+        {
+            return NotFound();
+        }
 
-        try
-        {
-            await _musicService.PauseOrResumeAsync(guildId).ConfigureAwait(false);
-            await _musicService
-                .UpdateSocketsAsync(guildId, updatePlayer: true)
-                .ConfigureAwait(false);
-            return Ok();
-        }
-        catch (Exception e)
-        {
-            return Problem(e.StackTrace, e.Message);
-        }
+        await player.PauseAsync(user).ConfigureAwait(false);
+        return Ok();
     }
 
+    [Route("resume")]
     [HttpPost]
     public async Task<IActionResult> Resume()
     {
-        var identity = HttpContext.User.Identity as ClaimsIdentity;
-        var guildId = ulong.Parse(identity!.FindFirst("guildId")!.Value);
+        var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
+        if (player is null)
+        {
+            return NotFound();
+        }
 
-        try
-        {
-            await _musicService.PauseOrResumeAsync(guildId).ConfigureAwait(false);
-            await _musicService
-                .UpdateSocketsAsync(guildId, updatePlayer: true)
-                .ConfigureAwait(false);
-            return Ok();
-        }
-        catch (Exception e)
-        {
-            return Problem(e.StackTrace, e.Message);
-        }
+        await player.ResumeAsync(user).ConfigureAwait(false);
+        return Ok();
     }
 
+    [Route("stop")]
     [HttpPost]
     public async Task<IActionResult> Stop()
     {
-        var identity = HttpContext.User.Identity as ClaimsIdentity;
-        var guildId = ulong.Parse(identity!.FindFirst("guildId")!.Value);
-
-        var player = await _musicService.TryGetPlayerAsync(guildId).ConfigureAwait(false);
+        var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
         if (player is null)
         {
             return NotFound();
         }
 
-        await player.StopAsync().ConfigureAwait(false);
+        await player.StopAsync(user).ConfigureAwait(false);
         return Ok();
     }
 
+    [Route("move")]
     [HttpPost]
-    public async Task<IActionResult> Move(int from, int to)
+    public async Task<IActionResult> Move([FromQuery] int from, [FromQuery] int to)
     {
-        var identity = HttpContext.User.Identity as ClaimsIdentity;
-        var guildId = ulong.Parse(identity!.FindFirst("guildId")!.Value);
-
-        var player = await _musicService.TryGetPlayerAsync(guildId).ConfigureAwait(false);
+        var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
         if (player is null)
         {
             return NotFound();
         }
 
-        await player.MoveTrackAsync(from, to).ConfigureAwait(false);
-        await _musicService.UpdateSocketsAsync(guildId, updateQueue: true).ConfigureAwait(false);
+        await player.MoveTrackAsync(user, from, to).ConfigureAwait(false);
         return Ok();
     }
 
+    [Route("next")]
     [HttpPost]
     public async Task<IActionResult> Next()
     {
-        var identity = HttpContext.User.Identity as ClaimsIdentity;
-        var guildId = ulong.Parse(identity!.FindFirst("guildId")!.Value);
-
-        var player = await _musicService.TryGetPlayerAsync(guildId).ConfigureAwait(false);
+        var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
         if (player is null)
         {
             return NotFound();
         }
 
-        await player.SkipAsync().ConfigureAwait(false);
+        await player.SkipAsync(user).ConfigureAwait(false);
         return Ok();
     }
 
+    [Route("skipto")]
     [HttpPost]
-    public async Task<IActionResult> SkipTo(int index)
+    public async Task<IActionResult> SkipTo([FromQuery] int index)
     {
-        var identity = HttpContext.User.Identity as ClaimsIdentity;
-        var guildId = ulong.Parse(identity!.FindFirst("guildId")!.Value);
-
-        var player = await _musicService.TryGetPlayerAsync(guildId).ConfigureAwait(false);
+        var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
         if (player is null)
         {
             return NotFound();
         }
 
-        await player.SkipToAsync(index).ConfigureAwait(false);
+        await player.SkipToAsync(user, index).ConfigureAwait(false);
         return Ok();
     }
 
+    [Route("removetrack")]
     [HttpPost]
-    public async Task<IActionResult> Remove(int index)
+    public async Task<IActionResult> Remove([FromQuery] int index)
     {
-        var identity = HttpContext.User.Identity as ClaimsIdentity;
-        var guildId = ulong.Parse(identity!.FindFirst("guildId")!.Value);
-
-        var player = await _musicService.TryGetPlayerAsync(guildId).ConfigureAwait(false);
+        var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
         if (player is null)
         {
             return NotFound();
         }
 
-        await player.RemoveAsync(index).ConfigureAwait(false);
-        return Content(
-            JsonConvert.SerializeObject(SocketMessage.FromZeenoxPlayer(player, updateQueue: true)),
-            "application/json"
-        );
-    }
-
-    [HttpPost]
-    public async Task<IActionResult> Like(int index)
-    {
-        var identity = HttpContext.User.Identity as ClaimsIdentity;
-        var guildId = ulong.Parse(identity!.FindFirst("guildId")!.Value);
-        var userId = ulong.Parse(identity!.FindFirst("userId")!.Value);
-
-        var player = await _musicService.TryGetPlayerAsync(guildId).ConfigureAwait(false);
-        if (player is null)
-        {
-            return NotFound();
-        }
-
-        var track = index == 0 ? player.CurrentItem : player.Queue.ElementAt(index);
-        if (track is null)
-            return NotFound();
-
-        await _databaseService
-            .UpdateUserAsync(
-                userId,
-                x =>
-                {
-                    if (x.FavoriteSongs.Contains(track.Track!.ToString()))
-                    {
-                        x.FavoriteSongs.Remove(track.Track.ToString());
-                    }
-                    else
-                    {
-                        x.FavoriteSongs.Add(track.Track.ToString());
-                    }
-                }
-            )
-            .ConfigureAwait(false);
-
+        await player.RemoveAtAsync(user, index).ConfigureAwait(false);
         return Ok();
     }
 
+    [Route("rewind")]
     [HttpPost]
-    public async Task<IActionResult> Back()
+    public async Task<IActionResult> Rewind()
     {
-        var identity = HttpContext.User.Identity as ClaimsIdentity;
-        var guildId = ulong.Parse(identity!.FindFirst("guildId")!.Value);
-
-        var player = await _musicService.TryGetPlayerAsync(guildId).ConfigureAwait(false);
+        var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
         if (player is null)
         {
             return NotFound();
         }
 
-        await player.RewindAsync().ConfigureAwait(false);
+        await player.RewindAsync(user).ConfigureAwait(false);
         return Ok();
     }
 
+    [Route("seek")]
     [HttpPost]
-    public async Task<IActionResult> Seek(int position)
+    public async Task<IActionResult> Seek([FromQuery] int position)
     {
-        var identity = HttpContext.User.Identity as ClaimsIdentity;
-        var guildId = ulong.Parse(identity!.FindFirst("guildId")!.Value);
+        var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
+        if (player is null)
+        {
+            return NotFound();
+        }
 
-        try
-        {
-            await _musicService.SeekAsync(guildId, position).ConfigureAwait(false);
-            return Ok();
-        }
-        catch (Exception e)
-        {
-            return Problem(e.StackTrace, e.Message);
-        }
+        await player.SeekAsync(user, position).ConfigureAwait(false);
+        return Ok();
     }
 
+    [Route("volume")]
     [HttpPost]
-    public async Task<IActionResult> SetVolume(int volume)
+    public async Task<IActionResult> SetVolume([FromQuery] int volume)
     {
-        var identity = HttpContext.User.Identity as ClaimsIdentity;
-        var guildId = ulong.Parse(identity!.FindFirst("guildId")!.Value);
+        var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
+        if (player is null)
+        {
+            return NotFound();
+        }
 
-        try
-        {
-            await _musicService.SetVolumeAsync(guildId, volume).ConfigureAwait(false);
-            await _musicService
-                .UpdateSocketsAsync(guildId, updatePlayer: true)
-                .ConfigureAwait(false);
-            return Ok();
-        }
-        catch (Exception e)
-        {
-            return Problem(e.StackTrace, e.Message);
-        }
+        await player.SetVolumeAsync(user, volume).ConfigureAwait(false);
+        return Ok();
     }
 
+    [Route("repeat")]
     [HttpPost]
     public async Task<IActionResult> Repeat()
     {
-        var identity = HttpContext.User.Identity as ClaimsIdentity;
-        var guildId = ulong.Parse(identity!.FindFirst("guildId")!.Value);
+        var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
+        if (player is null)
+        {
+            return NotFound();
+        }
 
-        try
-        {
-            await _musicService.CycleLoopModeAsync(guildId).ConfigureAwait(false);
-            await _musicService
-                .UpdateSocketsAsync(guildId, updatePlayer: true)
-                .ConfigureAwait(false);
-            return Ok();
-        }
-        catch (Exception e)
-        {
-            return Problem(e.StackTrace, e.Message);
-        }
+        await player.CycleRepeatModeAsync(user).ConfigureAwait(false);
+        return Ok();
     }
 
+    [Route("shuffle")]
     [HttpPost]
     public async Task<IActionResult> Shuffle()
     {
-        var identity = HttpContext.User.Identity as ClaimsIdentity;
-        var guildId = ulong.Parse(identity!.FindFirst("guildId")!.Value);
-
-        var player = await _musicService.TryGetPlayerAsync(guildId).ConfigureAwait(false);
+        var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
         if (player is null)
         {
             return NotFound();
         }
 
-        await player.ShuffleAsync().ConfigureAwait(false);
-        await _musicService.UpdateSocketsAsync(guildId, updateQueue: true).ConfigureAwait(false);
+        await player.ShuffleAsync(user).ConfigureAwait(false);
         return Ok();
     }
 
+    [Route("distinct")]
     [HttpPost]
     public async Task<IActionResult> DistinctQueue()
     {
-        var identity = HttpContext.User.Identity as ClaimsIdentity;
-        var guildId = ulong.Parse(identity!.FindFirst("guildId")!.Value);
-
-        var player = await _musicService.TryGetPlayerAsync(guildId).ConfigureAwait(false);
+        var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
         if (player is null)
         {
             return NotFound();
         }
 
-        await player.DistinctQueueAsync().ConfigureAwait(false);
-        await _musicService.UpdateSocketsAsync(guildId, updateQueue: true).ConfigureAwait(false);
+        await player.DistinctQueueAsync(user).ConfigureAwait(false);
         return Ok();
     }
 
+    [Route("clear")]
     [HttpPost]
     public async Task<IActionResult> ClearQueue()
     {
-        var identity = HttpContext.User.Identity as ClaimsIdentity;
-        var guildId = ulong.Parse(identity!.FindFirst("guildId")!.Value);
-
-        var player = await _musicService.TryGetPlayerAsync(guildId).ConfigureAwait(false);
+        var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
         if (player is null)
         {
             return NotFound();
         }
 
-        await player.ClearQueueAsync().ConfigureAwait(false);
-        await _musicService.UpdateSocketsAsync(guildId, updateQueue: true).ConfigureAwait(false);
+        await player.ClearQueueAsync(user).ConfigureAwait(false);
         return Ok();
     }
 
+    [Route("reverse")]
     [HttpPost]
     public async Task<IActionResult> ReverseQueue()
     {
-        var identity = HttpContext.User.Identity as ClaimsIdentity;
-        var guildId = ulong.Parse(identity!.FindFirst("guildId")!.Value);
-
-        var player = await _musicService.TryGetPlayerAsync(guildId).ConfigureAwait(false);
+        var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
         if (player is null)
         {
             return NotFound();
         }
 
-        await player.ShuffleAsync().ConfigureAwait(false);
-        await _musicService.UpdateSocketsAsync(guildId, updateQueue: true).ConfigureAwait(false);
+        await player.ReverseQueueAsync(user).ConfigureAwait(false);
         return Ok();
     }
 }

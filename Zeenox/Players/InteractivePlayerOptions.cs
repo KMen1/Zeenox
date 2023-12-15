@@ -2,9 +2,9 @@
 using Discord.WebSocket;
 using Lavalink4NET.Players.Vote;
 
-namespace Zeenox.Services;
+namespace Zeenox.Players;
 
-public sealed record ZeenoxPlayerOptions : VoteLavalinkPlayerOptions
+public record InteractivePlayerOptions : VoteLavalinkPlayerOptions
 {
     public ITextChannel TextChannel { get; set; } = null!;
     public SocketVoiceChannel VoiceChannel { get; set; } = null!;

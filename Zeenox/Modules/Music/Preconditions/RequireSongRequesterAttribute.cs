@@ -1,6 +1,5 @@
 ﻿using Discord;
 using Discord.Interactions;
-using Zeenox.Models;
 using Zeenox.Services;
 
 namespace Zeenox.Modules.Music.Preconditions;
@@ -18,7 +17,7 @@ public class RequireSongRequesterAttribute : PreconditionAttribute
 
         if (
             player is not null
-            && (player.CurrentItem as ZeenoxTrackItem)?.RequestedBy.Id != context.User.Id
+            && player.CurrentItem?.RequestedBy.Id != context.User.Id
         )
         {
             return PreconditionResult.FromError(

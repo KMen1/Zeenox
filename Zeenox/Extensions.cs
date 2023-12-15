@@ -1,33 +1,112 @@
-﻿using Lavalink4NET.Integrations.Lavasrc;
-using Lavalink4NET.Players.Queued;
-using Lavalink4NET.Tracks;
-using Zeenox.Models;
+﻿using System.Net.WebSockets;
+using System.Security.Claims;
+using System.Text;
+using System.Text.Json;
+using Zeenox.Models.Socket;
+using Zeenox.Players;
 
 namespace Zeenox;
 
 public static class Extensions
 {
-    public static string GetTitle(this LavalinkTrack track)
-    {
-        return track.SourceName == "spotify" ? $"{track.Author} - {track.Title}" : track.Title;
-    }
-
-    public static string GetTitle(this ITrackQueueItem queueItem)
-    {
-        var track = queueItem.Track!;
-        return track.SourceName == "spotify" ? $"{track.Author} - {track.Title}" : track.Title;
-    }
-
-    public static string? GetThumbnailUrl(this ITrackQueueItem queueItem)
-    {
-        var track = queueItem.Track!;
-        return new ExtendedLavalinkTrack(track).ArtworkUri?.ToString();
-    }
-
     public static string ToTimeString(this TimeSpan timeSpan)
     {
         return timeSpan.TotalHours < 1
             ? timeSpan.ToString(@"mm\:ss")
             : timeSpan.ToString(timeSpan.TotalDays < 1 ? @"hh\:mm\:ss" : @"dd\:hh\:mm\:ss");
+    }
+
+    public static ulong? GetGuildId(this ClaimsIdentity claimsPrincipal)
+    {
+        return ulong.TryParse(claimsPrincipal.FindFirst("GUILD_ID")?.Value, out var guildId)
+            ? guildId
+            : null;
+    }
+
+    public static ulong? GetUserId(this ClaimsIdentity claimsPrincipal)
+    {
+        return ulong.TryParse(claimsPrincipal.FindFirst("USER_ID")?.Value, out var userId)
+            ? userId
+            : null;
+    }
+
+    public static ulong? GetGuildId(this ClaimsPrincipal claimsPrincipal)
+    {
+        return ulong.TryParse(claimsPrincipal.FindFirst("GUILD_ID")?.Value, out var guildId)
+            ? guildId
+            : null;
+    }
+
+    public static ulong? GetUserId(this ClaimsPrincipal claimsPrincipal)
+    {
+        return ulong.TryParse(claimsPrincipal.FindFirst("USER_ID")?.Value, out var userId)
+            ? userId
+            : null;
+    }
+
+    public static Task SendTextAsync(this WebSocket socket, string text)
+    {
+        return socket.SendAsync(
+            Encoding.UTF8.GetBytes(text).ToArray(),
+            WebSocketMessageType.Text,
+            true,
+            CancellationToken.None
+        );
+    }
+
+    public static async Task InitSocketAsync(this WebSocket socket, SocketPlayer player)
+    {
+        await socket.SendTextAsync(JsonSerializer.Serialize(new PlayerInitMessage(player.VoiceChannel.Name,
+            player.StartedAt.ToUnixTimeSeconds(), player.Position?.Position.Seconds ?? 0))).ConfigureAwait(false);
+        await socket
+            .SendTextAsync(JsonSerializer.Serialize(new PlayerDto(player)))
+            .ConfigureAwait(false);
+        await socket
+            .SendTextAsync(JsonSerializer.Serialize(new TrackDto(player.CurrentItem)))
+            .ConfigureAwait(false);
+        await socket
+            .SendTextAsync(JsonSerializer.Serialize(new QueueDto(player)))
+            .ConfigureAwait(false);
+        await socket
+            .SendTextAsync(JsonSerializer.Serialize(new ActionsDto((LoggedPlayer)player)))
+            .ConfigureAwait(false);
+    }
+
+    public static async Task SendSocketMessagesAsync(
+        this WebSocket socket,
+        SocketPlayer player,
+        bool updatePlayer,
+        bool updateTrack,
+        bool updateQueue,
+        bool updateActions
+    )
+    {
+        if (updatePlayer)
+        {
+            await socket
+                .SendTextAsync(JsonSerializer.Serialize(new PlayerDto(player)))
+                .ConfigureAwait(false);
+        }
+
+        if (updateTrack)
+        {
+            await socket
+                .SendTextAsync(JsonSerializer.Serialize(new TrackDto(player.CurrentItem)))
+                .ConfigureAwait(false);
+        }
+
+        if (updateQueue)
+        {
+            await socket
+                .SendTextAsync(JsonSerializer.Serialize(new QueueDto(player)))
+                .ConfigureAwait(false);
+        }
+
+        if (updateActions)
+        {
+            await socket
+                .SendTextAsync(JsonSerializer.Serialize(new ActionDto((LoggedPlayer)player)))
+                .ConfigureAwait(false);
+        }
     }
 }
