@@ -33,10 +33,10 @@ public class SocketController : ControllerBase
             return;
         }
 
-        var webSocket = await HttpContext.WebSockets
+        using var webSocket = await HttpContext.WebSockets
             .AcceptWebSocketAsync()
             .ConfigureAwait(false);
-        await Task.Run(() => HandleSocketAsync(webSocket)).ConfigureAwait(false);
+        await HandleSocketAsync(webSocket).ConfigureAwait(false);
     }
 
     private static ClaimsPrincipal? GetClaims(string jwt)
