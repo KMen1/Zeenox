@@ -14,10 +14,15 @@ public class ErrorHandlingMiddleware(RequestDelegate next)
         catch (Exception error)
         {
             var response = context.Response;
+            var result = JsonSerializer.Serialize(new { message = error.Message });
+            if (response.HasStarted)
+            {
+                await response.WriteAsync(result).ConfigureAwait(false);
+            }
             response.ContentType = "application/json";
             response.StatusCode = (int)HttpStatusCode.InternalServerError;
-            var result = JsonSerializer.Serialize(new { message = error.Message });
             await response.WriteAsync(result).ConfigureAwait(false);
+            
         }
     }
 }
