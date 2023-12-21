@@ -127,7 +127,7 @@ public class SocketPlayer
         bool updateActions = false
     )
     {
-        if (_webSockets.Count == 0)
+        if (_webSockets.IsEmpty)
             return;
         //RemoveDeadSockets();
 
@@ -141,7 +141,8 @@ public class SocketPlayer
     {
         foreach (var (_, socket) in _webSockets)
         {
-            await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Disposed", CancellationToken.None).ConfigureAwait(false);
+            if (socket.State == WebSocketState.Open)
+                await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Disposed", CancellationToken.None).ConfigureAwait(false);
             socket.Dispose();
         }
 

@@ -49,6 +49,7 @@ public class SocketController : ControllerBase
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtsecret)),
             ValidateIssuer = true,
             ValidateAudience = true,
+            ValidateLifetime = false,
             ValidateIssuerSigningKey = true
         };
         return handler.ValidateToken(jwt, validations, out _);

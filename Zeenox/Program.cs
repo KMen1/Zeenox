@@ -113,16 +113,16 @@ builder.Services
         };
     });
 
-/*builder.Services.AddCors(x =>
+builder.Services.AddCors(x =>
 {
     x.AddPolicy(
         "origin",
         y =>
         {
-            y.WithOrigins("localhost");
+            y.WithOrigins("zeenox-web.vercel.app");
         }
     );
-});*/
+});
 
 builder.Services.AddAuthorization();
 
@@ -149,10 +149,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
-//app.UseHttpsRedirection();
-
-//app.UseCors("origin");
+else
+{
+    app.UseHttpsRedirection();
+    app.UseCors("origin");
+}
 
 app.UseAuthentication();
 app.UseAuthorization();
