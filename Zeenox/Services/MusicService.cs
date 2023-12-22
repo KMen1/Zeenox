@@ -1,8 +1,12 @@
-﻿using Lavalink4NET;
+﻿using Discord;
+using Discord.WebSocket;
+using Lavalink4NET;
+using Lavalink4NET.Clients;
 using Lavalink4NET.InactivityTracking;
 using Lavalink4NET.InactivityTracking.Events;
 using Lavalink4NET.Lyrics;
 using Lavalink4NET.Players;
+using Microsoft.Extensions.Options;
 using Zeenox.Players;
 
 namespace Zeenox.Services;
@@ -10,15 +14,18 @@ namespace Zeenox.Services;
 public class MusicService
 {
     private readonly IAudioService _audioService;
+    private readonly DatabaseService _databaseService;
     private readonly ILyricsService _lyricsService;
 
     public MusicService(
         IAudioService audioService,
         ILyricsService lyricsService,
-        IInactivityTrackingService trackingService
+        IInactivityTrackingService trackingService,
+        DatabaseService databaseService
     )
     {
         _lyricsService = lyricsService;
+        _databaseService = databaseService;
         _audioService = audioService;
         trackingService.PlayerInactive += OnInactivePlayerAsync;
     }
@@ -41,6 +48,49 @@ public class MusicService
     public Task<LoggedPlayer?> TryGetPlayerAsync(ulong guildId)
     {
         return TryGetPlayerAsync<LoggedPlayer>(guildId);
+    }
+
+    public async ValueTask<LoggedPlayer?> TryCreatePlayerAsync(
+        ulong guildId,
+        SocketVoiceChannel voiceChannel,
+        ITextChannel? textChannel = null
+    )
+    {
+        var factory = new PlayerFactory<LoggedPlayer, InteractivePlayerOptions>(
+            (properties, _) =>
+            {
+                properties.Options.Value.TextChannel = textChannel;
+                properties.Options.Value.VoiceChannel = voiceChannel;
+                return ValueTask.FromResult(new LoggedPlayer(properties));
+            }
+        );
+
+        var retrieveOptions = new PlayerRetrieveOptions(
+            ChannelBehavior: PlayerChannelBehavior.Join,
+            VoiceStateBehavior: MemberVoiceStateBehavior.RequireSame
+        );
+
+        var guildConfig = await _databaseService.GetGuildConfigAsync(guildId).ConfigureAwait(false);
+
+        var result = await _audioService.Players
+            .RetrieveAsync(
+                guildId,
+                voiceChannel.Id,
+                playerFactory: factory,
+                options: new OptionsWrapper<InteractivePlayerOptions>(
+                    new InteractivePlayerOptions
+                    {
+                        SelfDeaf = true,
+                        InitialVolume =
+                            (float)Math.Floor(guildConfig.MusicSettings.DefaultVolume / (double)2)
+                            / 100f,
+                    }
+                ),
+                retrieveOptions
+            )
+            .ConfigureAwait(false);
+
+        return result.IsSuccess ? result.Player : null;
     }
 
     public async Task<string?> GetLyricsAsync(ulong guildId)

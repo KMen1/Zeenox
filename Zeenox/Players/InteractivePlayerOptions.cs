@@ -6,6 +6,6 @@ namespace Zeenox.Players;
 
 public record InteractivePlayerOptions : VoteLavalinkPlayerOptions
 {
-    public ITextChannel TextChannel { get; set; } = null!;
+    public ITextChannel? TextChannel { get; set; } = null!;
     public SocketVoiceChannel VoiceChannel { get; set; } = null!;
 }

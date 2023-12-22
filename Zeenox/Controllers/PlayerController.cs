@@ -28,6 +28,11 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         var player = await musicService.TryGetPlayerAsync(guildId.GetValueOrDefault()).ConfigureAwait(false);
         return (client.GetUser(userId!.Value), player);
     }
+    
+    private static bool IsUserInVoiceChannel(LoggedPlayer player, IUser user)
+    {
+        return player.VoiceChannel.ConnectedUsers.Any(x => x.Id == user.Id);
+    }
 
     [Route("lyrics")]
     [HttpGet]
@@ -48,6 +53,10 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         if (player is null)
         {
             return NotFound();
+        }
+        if (!IsUserInVoiceChannel(player, user))
+        {
+            return Forbid();
         }
         
         var result = await audioService.Tracks.LoadTracksAsync(url, new TrackLoadOptions { SearchMode = TrackSearchMode.None, StrictSearch = true }).ConfigureAwait(false);
@@ -75,6 +84,10 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         {
             return NotFound();
         }
+        if (!IsUserInVoiceChannel(player, user))
+        {
+            return Forbid();
+        }
         
         var track = await audioService.Tracks.LoadTrackAsync(url, new TrackLoadOptions { SearchMode = TrackSearchMode.None, StrictSearch = true }).ConfigureAwait(false);
         if (track is null)
@@ -95,6 +108,10 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         {
             return NotFound();
         }
+        if (!IsUserInVoiceChannel(player, user))
+        {
+            return Forbid();
+        }
 
         await player.PauseAsync(user).ConfigureAwait(false);
         return Ok();
@@ -108,6 +125,10 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         if (player is null)
         {
             return NotFound();
+        }
+        if (!IsUserInVoiceChannel(player, user))
+        {
+            return Forbid();
         }
 
         await player.ResumeAsync(user).ConfigureAwait(false);
@@ -123,6 +144,10 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         {
             return NotFound();
         }
+        if (!IsUserInVoiceChannel(player, user))
+        {
+            return Forbid();
+        }
 
         await player.StopAsync(user).ConfigureAwait(false);
         return Ok();
@@ -136,6 +161,10 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         if (player is null)
         {
             return NotFound();
+        }
+        if (!IsUserInVoiceChannel(player, user))
+        {
+            return Forbid();
         }
 
         await player.MoveTrackAsync(user, from, to).ConfigureAwait(false);
@@ -151,6 +180,10 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         {
             return NotFound();
         }
+        if (!IsUserInVoiceChannel(player, user))
+        {
+            return Forbid();
+        }
 
         await player.SkipAsync(user).ConfigureAwait(false);
         return Ok();
@@ -164,6 +197,10 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         if (player is null)
         {
             return NotFound();
+        }
+        if (!IsUserInVoiceChannel(player, user))
+        {
+            return Forbid();
         }
 
         await player.SkipToAsync(user, index).ConfigureAwait(false);
@@ -179,6 +216,10 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         {
             return NotFound();
         }
+        if (!IsUserInVoiceChannel(player, user))
+        {
+            return Forbid();
+        }
 
         await player.RemoveAtAsync(user, index).ConfigureAwait(false);
         return Ok();
@@ -192,6 +233,10 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         if (player is null)
         {
             return NotFound();
+        }
+        if (!IsUserInVoiceChannel(player, user))
+        {
+            return Forbid();
         }
 
         await player.RewindAsync(user).ConfigureAwait(false);
@@ -207,6 +252,10 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         {
             return NotFound();
         }
+        if (!IsUserInVoiceChannel(player, user))
+        {
+            return Forbid();
+        }
 
         await player.SeekAsync(user, position).ConfigureAwait(false);
         return Ok();
@@ -220,6 +269,10 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         if (player is null)
         {
             return NotFound();
+        }
+        if (!IsUserInVoiceChannel(player, user))
+        {
+            return Forbid();
         }
 
         await player.SetVolumeAsync(user, volume).ConfigureAwait(false);
@@ -235,6 +288,10 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         {
             return NotFound();
         }
+        if (!IsUserInVoiceChannel(player, user))
+        {
+            return Forbid();
+        }
 
         await player.CycleRepeatModeAsync(user).ConfigureAwait(false);
         return Ok();
@@ -249,7 +306,12 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         {
             return NotFound();
         }
+        if (!IsUserInVoiceChannel(player, user))
+        {
+            return Forbid();
+        }
 
+        
         await player.ShuffleAsync(user).ConfigureAwait(false);
         return Ok();
     }
@@ -262,6 +324,10 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         if (player is null)
         {
             return NotFound();
+        }
+        if (!IsUserInVoiceChannel(player, user))
+        {
+            return Forbid();
         }
 
         await player.DistinctQueueAsync(user).ConfigureAwait(false);
@@ -277,6 +343,10 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         {
             return NotFound();
         }
+        if (!IsUserInVoiceChannel(player, user))
+        {
+            return Forbid();
+        }
 
         await player.ClearQueueAsync(user).ConfigureAwait(false);
         return Ok();
@@ -290,6 +360,10 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         if (player is null)
         {
             return NotFound();
+        }
+        if (!IsUserInVoiceChannel(player, user))
+        {
+            return Forbid();
         }
 
         await player.ReverseQueueAsync(user).ConfigureAwait(false);

@@ -2,6 +2,7 @@
 using System.Net.WebSockets;
 using System.Security.Claims;
 using System.Text;
+using Discord.WebSocket;
 using Lavalink4NET.Players;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
@@ -16,11 +17,17 @@ namespace Zeenox.Controllers;
 public class SocketController : ControllerBase
 {
     private readonly MusicService _musicService;
+    private readonly DiscordSocketClient _client;
     private static string _jwtsecret = "";
 
-    public SocketController(MusicService musicService, IConfiguration configuration)
+    public SocketController(
+        MusicService musicService,
+        IConfiguration configuration,
+        DiscordSocketClient client
+    )
     {
         _musicService = musicService;
+        _client = client;
         _jwtsecret = configuration["JwtSettings:Key"]!;
     }
 
@@ -79,7 +86,16 @@ public class SocketController : ControllerBase
         var player = await _musicService.TryGetPlayerAsync(guildId.Value).ConfigureAwait(false);
         if (player is null)
         {
-            return;
+            var user = _client.GetGuild(guildId.Value).GetUser(userId.Value);
+            var voiceChannel = user.VoiceChannel;
+            if (voiceChannel is null)
+                return;
+
+            player = await _musicService
+                .TryCreatePlayerAsync(guildId.Value, voiceChannel)
+                .ConfigureAwait(false);
+            if (player is null)
+                return;
         }
 
         player.AddSocket(userId.Value, socket);

@@ -9,7 +9,7 @@ namespace Zeenox.Players;
 public class InteractivePlayer
     (IPlayerProperties<MusicPlayer, InteractivePlayerOptions> properties) : MusicPlayer(properties)
 {
-    private ITextChannel TextChannel { get; } = properties.Options.Value.TextChannel;
+    private ITextChannel? TextChannel { get; } = properties.Options.Value.TextChannel;
     public SocketVoiceChannel VoiceChannel { get; } = properties.Options.Value.VoiceChannel;
     private IUserMessage? NowPlayingMessage { get; set; }
 
@@ -113,6 +113,9 @@ public class InteractivePlayer
 
     private async Task UpdateMessageAsync(ExtendedTrackItem? track = null)
     {
+        if (TextChannel is null)
+            return;
+        
         var actualTrack = track ?? CurrentItem;
         var eb = GetEmbedBuilder(actualTrack);
         var cb = GetButtons(actualTrack);
