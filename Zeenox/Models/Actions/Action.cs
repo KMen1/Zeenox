@@ -55,7 +55,7 @@ public abstract class Action(IUser user, ActionType type) : IAction
     public string StringifyFull()
     {
         var sb = new StringBuilder();
-        sb.Append($"[<t:{Timestamp.ToUnixTimeSeconds()}:t>] {user.Mention} ");
+        sb.Append($"[<t:{Timestamp.ToUnixTimeSeconds()}:t>] {User.Mention} ");
         sb.Append(((IAction)this).Stringify());
         return sb.ToString();
     }
