@@ -1,10 +1,13 @@
 ﻿using System.Net.Mime;
 using System.Security.Claims;
+using Asp.Versioning;
 using Discord.WebSocket;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
+using Zeenox.Models;
 using Zeenox.Models.Socket;
+using Zeenox.Services;
 
 namespace Zeenox.Controllers;
 
@@ -14,11 +17,11 @@ namespace Zeenox.Controllers;
 [ProducesResponseType(StatusCodes.Status401Unauthorized)]
 [Route("api/v{version:apiVersion}/[controller]")]
 [ApiVersion("1.0")]
-public class GuildsController(DiscordSocketClient client) : ControllerBase
+public class GuildsController(DiscordSocketClient client, DatabaseService databaseService) : ControllerBase
 {
     [Route("available")]
     [HttpGet]
-    public IActionResult GetAvailableGuilds()
+    public async Task<IActionResult> GetAvailableGuilds(bool includeResumeSessions = false)
     {
         var identity = HttpContext.User.Identity as ClaimsIdentity;
         var userId = identity!.GetUserId();
@@ -27,15 +30,22 @@ public class GuildsController(DiscordSocketClient client) : ControllerBase
             x =>
                 x.Users.Select(y => y.Id).Contains(userId!.Value)
             //&& x.Users.First(z => z.Id == userId).GuildPermissions.ManageGuild
-        );
-        var guildsList = guilds.Select(x => new GuildDto(x));
+        ).ToList();
 
-        return Content(JsonConvert.SerializeObject(guildsList));
+        if (!includeResumeSessions)
+        {
+            var guildsList = guilds.Select(x => new GuildDto(x, null));
+            return Content(JsonConvert.SerializeObject(guildsList));
+        }
+        
+        var resumeSessions = await databaseService.GetResumeSessionsAsync(guilds.Select(x => x.Id).ToArray()).ConfigureAwait(false);
+        var guildsListWithResumeSessions = guilds.Select(x => new GuildDto(x, PlayerResumeSessionDto.Create(resumeSessions.FirstOrDefault(y => y.GuildId == x.Id), client)));
+        return Content(JsonConvert.SerializeObject(guildsListWithResumeSessions));
     }
 
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [HttpGet]
-    public IActionResult GetGuild([FromQuery] ulong id)
+    public async Task<IActionResult> GetGuild([FromQuery] ulong id)
     {
         var guild = client.Guilds.FirstOrDefault(x => x.Id == id);
         if (guild is null)
@@ -43,6 +53,8 @@ public class GuildsController(DiscordSocketClient client) : ControllerBase
             return NotFound();
         }
 
-        return Ok(JsonConvert.SerializeObject(new GuildDto(guild)));
+        var resumeSession = await databaseService.GetResumeSessionAsync(id).ConfigureAwait(false);
+        var resumeSessionDto = resumeSession is null ? null : new PlayerResumeSessionDto(resumeSession, client);
+        return Ok(JsonConvert.SerializeObject(new GuildDto(guild, resumeSessionDto)));
     }
 }

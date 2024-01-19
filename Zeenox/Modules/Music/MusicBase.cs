@@ -34,6 +34,7 @@ public class MusicBase : ModuleBase
                 properties.Options.Value.VoiceChannel = (
                     voiceState!.VoiceChannel as SocketVoiceChannel
                 )!;
+                properties.Options.Value.DbService = DatabaseService;
                 return ValueTask.FromResult(new LoggedPlayer(properties));
             }
         );

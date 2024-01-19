@@ -61,6 +61,7 @@ public class MusicService
             {
                 properties.Options.Value.TextChannel = textChannel;
                 properties.Options.Value.VoiceChannel = voiceChannel;
+                properties.Options.Value.DbService = _databaseService;
                 return ValueTask.FromResult(new LoggedPlayer(properties));
             }
         );

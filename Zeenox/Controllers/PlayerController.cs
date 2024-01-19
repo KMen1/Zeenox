@@ -1,4 +1,5 @@
 ﻿using System.Security.Claims;
+using Asp.Versioning;
 using Discord;
 using Discord.WebSocket;
 using Lavalink4NET;
@@ -17,7 +18,7 @@ namespace Zeenox.Controllers;
 [ProducesResponseType(StatusCodes.Status404NotFound)]
 [Route("api/v{version:apiVersion}/[controller]")]
 [ApiVersion("1.0")]
-public class PlayerController(MusicService musicService, DiscordSocketClient client, IAudioService audioService) : ControllerBase
+public class PlayerController(MusicService musicService, DiscordSocketClient client, IAudioService audioService, DatabaseService dbService) : ControllerBase
 {
     private async Task<(IUser, LoggedPlayer?)> GetPlayerAndUserAsync()
     {
@@ -29,11 +30,6 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         return (client.GetUser(userId!.Value), player);
     }
     
-    private static bool IsUserInVoiceChannel(LoggedPlayer player, IUser user)
-    {
-        return player.VoiceChannel.ConnectedUsers.Any(x => x.Id == user.Id);
-    }
-
     [Route("lyrics")]
     [HttpGet]
     public async Task<IActionResult> GetLyrics()
@@ -45,6 +41,30 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         return lyrics is null ? NotFound() : Ok(lyrics);
     }
 
+    [Route("resumesession")]
+    [HttpPost]
+    public async Task<IActionResult> ResumeSession()
+    {
+        var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
+        if (player is null)
+        {
+            return NotFound();
+        }
+        if (!player.IsUserListening(user))
+        {
+            return Forbid();
+        }
+        
+        var resumeSession = await dbService.GetResumeSessionAsync(player.GuildId).ConfigureAwait(false);
+        if (resumeSession is null)
+        {
+            throw new Exception("Resume session is null");
+        }
+
+        await player.ResumeSessionAsync(user, client).ConfigureAwait(false);
+        return Ok();
+    }
+    
     [Route("play")]
     [HttpPost]
     public async Task<IActionResult> Play([FromQuery] string url)
@@ -54,7 +74,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         {
             return NotFound();
         }
-        if (!IsUserInVoiceChannel(player, user))
+        if (!player.IsUserListening(user))
         {
             return Forbid();
         }
@@ -84,7 +104,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         {
             return NotFound();
         }
-        if (!IsUserInVoiceChannel(player, user))
+        if (!player.IsUserListening(user))
         {
             return Forbid();
         }
@@ -108,7 +128,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         {
             return NotFound();
         }
-        if (!IsUserInVoiceChannel(player, user))
+        if (!player.IsUserListening(user))
         {
             return Forbid();
         }
@@ -126,7 +146,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         {
             return NotFound();
         }
-        if (!IsUserInVoiceChannel(player, user))
+        if (!player.IsUserListening(user))
         {
             return Forbid();
         }
@@ -144,12 +164,30 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         {
             return NotFound();
         }
-        if (!IsUserInVoiceChannel(player, user))
+        if (!player.IsUserListening(user))
         {
             return Forbid();
         }
 
         await player.StopAsync(user).ConfigureAwait(false);
+        return Ok();
+    }
+    
+    [Route("disconnect")]
+    [HttpPost]
+    public async Task<IActionResult> Disconnect()
+    {
+        var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
+        if (player is null)
+        {
+            return NotFound();
+        }
+        if (!player.IsUserListening(user))
+        {
+            return Forbid();
+        }
+
+        await player.DisconnectAsync().ConfigureAwait(false);
         return Ok();
     }
 
@@ -162,7 +200,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         {
             return NotFound();
         }
-        if (!IsUserInVoiceChannel(player, user))
+        if (!player.IsUserListening(user))
         {
             return Forbid();
         }
@@ -180,7 +218,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         {
             return NotFound();
         }
-        if (!IsUserInVoiceChannel(player, user))
+        if (!player.IsUserListening(user))
         {
             return Forbid();
         }
@@ -198,7 +236,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         {
             return NotFound();
         }
-        if (!IsUserInVoiceChannel(player, user))
+        if (!player.IsUserListening(user))
         {
             return Forbid();
         }
@@ -216,7 +254,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         {
             return NotFound();
         }
-        if (!IsUserInVoiceChannel(player, user))
+        if (!player.IsUserListening(user))
         {
             return Forbid();
         }
@@ -234,7 +272,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         {
             return NotFound();
         }
-        if (!IsUserInVoiceChannel(player, user))
+        if (!player.IsUserListening(user))
         {
             return Forbid();
         }
@@ -252,7 +290,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         {
             return NotFound();
         }
-        if (!IsUserInVoiceChannel(player, user))
+        if (!player.IsUserListening(user))
         {
             return Forbid();
         }
@@ -270,7 +308,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         {
             return NotFound();
         }
-        if (!IsUserInVoiceChannel(player, user))
+        if (!player.IsUserListening(user))
         {
             return Forbid();
         }
@@ -288,7 +326,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         {
             return NotFound();
         }
-        if (!IsUserInVoiceChannel(player, user))
+        if (!player.IsUserListening(user))
         {
             return Forbid();
         }
@@ -306,7 +344,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         {
             return NotFound();
         }
-        if (!IsUserInVoiceChannel(player, user))
+        if (!player.IsUserListening(user))
         {
             return Forbid();
         }
@@ -325,7 +363,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         {
             return NotFound();
         }
-        if (!IsUserInVoiceChannel(player, user))
+        if (!player.IsUserListening(user))
         {
             return Forbid();
         }
@@ -343,7 +381,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         {
             return NotFound();
         }
-        if (!IsUserInVoiceChannel(player, user))
+        if (!player.IsUserListening(user))
         {
             return Forbid();
         }
@@ -361,7 +399,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
         {
             return NotFound();
         }
-        if (!IsUserInVoiceChannel(player, user))
+        if (!player.IsUserListening(user))
         {
             return Forbid();
         }

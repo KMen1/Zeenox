@@ -2,6 +2,8 @@
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
+using Discord;
+using Zeenox.Models;
 using Zeenox.Models.Socket;
 using Zeenox.Players;
 
@@ -54,10 +56,24 @@ public static class Extensions
         );
     }
 
-    public static async Task InitSocketAsync(this WebSocket socket, SocketPlayer player)
+    public static async Task InitSocketAsync(
+        this WebSocket socket,
+        LoggedPlayer player,
+        PlayerResumeSessionDto? resumeSessionDto
+    )
     {
-        await socket.SendTextAsync(JsonSerializer.Serialize(new PlayerInitMessage(player.VoiceChannel.Name,
-            player.StartedAt.ToUnixTimeSeconds(), player.Position?.Position.Seconds ?? 0))).ConfigureAwait(false);
+        await socket
+            .SendTextAsync(
+                JsonSerializer.Serialize(
+                    new PlayerInitMessage(
+                        player.VoiceChannel.Name,
+                        player.StartedAt.ToUnixTimeSeconds(),
+                        player.Position?.Position.Seconds ?? 0,
+                        resumeSessionDto
+                    )
+                )
+            )
+            .ConfigureAwait(false);
         await socket
             .SendTextAsync(JsonSerializer.Serialize(new PlayerDto(player)))
             .ConfigureAwait(false);
@@ -108,5 +124,10 @@ public static class Extensions
                 .SendTextAsync(JsonSerializer.Serialize(new ActionDto((LoggedPlayer)player)))
                 .ConfigureAwait(false);
         }
+    }
+
+    public static bool IsUserListening(this SocketPlayer player, IUser user)
+    {
+        return player.VoiceChannel.ConnectedUsers.Any(x => x.Id == user.Id);
     }
 }

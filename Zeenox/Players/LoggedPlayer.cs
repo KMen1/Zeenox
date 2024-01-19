@@ -1,10 +1,14 @@
 ﻿using Discord;
+using Discord.WebSocket;
 using Lavalink4NET.Players;
 using Lavalink4NET.Players.Queued;
+using Lavalink4NET.Tracks;
 using Zeenox.Enums;
+using Zeenox.Models;
 using Zeenox.Models.Actions.Player;
 using Zeenox.Models.Actions.Queue;
 using Zeenox.Models.Player;
+using Zeenox.Services;
 using Action = Zeenox.Models.Actions.Action;
 using ActionType = Zeenox.Enums.ActionType;
 
@@ -13,7 +17,9 @@ namespace Zeenox.Players;
 public sealed class LoggedPlayer
     (IPlayerProperties<LoggedPlayer, InteractivePlayerOptions> properties) : SocketPlayer(properties)
 {
-    public List<Action> Actions { get; } = new();
+    public List<Action> Actions { get; } = [];
+    public ExtendedTrackItem? LastCurrentItem { get; private set; }
+    private DatabaseService DbService { get; } = properties.Options.Value.DbService;
 
     private Task AddActionAsync(Action action)
     {
@@ -173,7 +179,35 @@ public sealed class LoggedPlayer
 
     public async ValueTask StopAsync(IUser user)
     {
+        LastCurrentItem = CurrentItem;
         await base.StopAsync().ConfigureAwait(false);
         await AddActionAsync(new StopAction(user)).ConfigureAwait(false);
+    }
+    
+    public async Task ResumeSessionAsync(IUser user, DiscordSocketClient client)
+    {
+        var resumeSession = await DbService.GetResumeSessionAsync(GuildId).ConfigureAwait(false);
+        if (resumeSession is null)
+            return;
+        var track = new ExtendedTrackItem(new TrackReference(LavalinkTrack.Parse(resumeSession.CurrentTrack.Id, null)), client.GetUser(resumeSession.CurrentTrack.RequesterId));
+        var queue = resumeSession.Queue.Select(x => new ExtendedTrackItem(new TrackReference(LavalinkTrack.Parse(x.Id, null)), client.GetUser(x.RequesterId))).ToList();
+
+        if (queue.Count > 0)
+        {
+            await Queue.AddRangeAsync(queue).ConfigureAwait(false);
+            await AddActionAsync(new EnqueuePlaylistAction(user, queue)).ConfigureAwait(false);
+        }
+        await PlayAsync(user, track, false).ConfigureAwait(false);
+        await DbService.DeleteResumeSessionAsync(GuildId).ConfigureAwait(false);
+    }
+
+    protected override async ValueTask DisposeAsyncCore()
+    {
+        if (Queue.Count > 0)
+        {
+            var resumeSession = new PlayerResumeSession(this);
+            await DbService.SaveResumeSessionAsync(resumeSession).ConfigureAwait(false);
+        }
+        await base.DisposeAsyncCore().ConfigureAwait(false);
     }
 }

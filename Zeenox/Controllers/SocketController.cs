@@ -2,10 +2,12 @@
 using System.Net.WebSockets;
 using System.Security.Claims;
 using System.Text;
+using Asp.Versioning;
 using Discord.WebSocket;
 using Lavalink4NET.Players;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
+using Zeenox.Models;
 using Zeenox.Services;
 
 namespace Zeenox.Controllers;
@@ -18,16 +20,17 @@ public class SocketController : ControllerBase
 {
     private readonly MusicService _musicService;
     private readonly DiscordSocketClient _client;
+    private readonly DatabaseService _dbService;
     private static string _jwtsecret = "";
 
     public SocketController(
         MusicService musicService,
         IConfiguration configuration,
-        DiscordSocketClient client
-    )
+        DiscordSocketClient client, DatabaseService dbService)
     {
         _musicService = musicService;
         _client = client;
+        _dbService = dbService;
         _jwtsecret = configuration["JwtSettings:Key"]!;
     }
 
@@ -99,7 +102,11 @@ public class SocketController : ControllerBase
         }
 
         player.AddSocket(userId.Value, socket);
-        await socket.InitSocketAsync(player).ConfigureAwait(false);
+        var resume = await _dbService
+            .GetResumeSessionAsync(guildId.Value)
+            .ConfigureAwait(false);
+        var t = PlayerResumeSessionDto.Create(resume, _client);
+        await socket.InitSocketAsync(player, t).ConfigureAwait(false);
 
         using var cts = new CancellationTokenSource();
         var token = cts.Token;
@@ -153,7 +160,7 @@ public class SocketController : ControllerBase
                 .ConfigureAwait(false);
         }
 
-        cts.Cancel();
+        await cts.CancelAsync().ConfigureAwait(false);
 
         await socket
             .CloseAsync(

@@ -9,12 +9,14 @@ public sealed class DatabaseService
 {
     private readonly IMemoryCache _cache;
     private readonly IMongoCollection<GuildConfig> _configs;
+    private readonly IMongoCollection<PlayerResumeSession> _resumeSessions;
 
     public DatabaseService(IMongoClient mongoClient, IConfiguration config, IMemoryCache cache)
     {
         _cache = cache;
-        var database = mongoClient.GetDatabase(config.GetSection("MongoDB")["Database"]!);
+        var database = mongoClient.GetDatabase(config["MongoDB:Database"]!);
         _configs = database.GetCollection<GuildConfig>("configs");
+        _resumeSessions = database.GetCollection<PlayerResumeSession>("resumeSessions");
     }
 
     private async Task AddGuildConfigAsync(ulong guildId)
@@ -46,6 +48,55 @@ public sealed class DatabaseService
         await _configs.ReplaceOneAsync(x => x.GuildId == guildId, previous).ConfigureAwait(false);
         _cache.Remove(guildId);
         _cache.Set(guildId, previous, TimeSpan.FromMinutes(5));
-        Log.Logger.Information("Updated config for guild with id:  {GuildId}", guildId);
+        Log.Logger.Information("Updated config for guild with id: {GuildId}", guildId);
+    }
+
+    public async Task SaveResumeSessionAsync(PlayerResumeSession session)
+    {
+        await _resumeSessions
+            .ReplaceOneAsync(
+                x => x.GuildId == session.GuildId,
+                session,
+                new ReplaceOptions { IsUpsert = true }
+            )
+            .ConfigureAwait(false);
+        Log.Logger.Information(
+            "Saved resume session for guild with id: {GuildId}",
+            session.GuildId
+        );
+    }
+
+    public async Task<PlayerResumeSession?> GetResumeSessionAsync(ulong guildId)
+    {
+        var cursor = await _resumeSessions
+            .FindAsync(x => x.GuildId == guildId)
+            .ConfigureAwait(false);
+        var result = await cursor.FirstOrDefaultAsync().ConfigureAwait(false);
+        Log.Logger.Information("Got resume session for guild with id: {GuildId}", guildId);
+        
+        //if (result is not null)
+        //    await _resumeSessions.DeleteOneAsync(x => x.GuildId == guildId).ConfigureAwait(false);
+        return result;
+    }
+    
+    public async Task DeleteResumeSessionAsync(ulong guildId)
+    {
+        await _resumeSessions.DeleteOneAsync(x => x.GuildId == guildId).ConfigureAwait(false);
+        Log.Logger.Information("Deleted resume session for guild with id: {GuildId}", guildId);
+    }
+
+    public async Task<IEnumerable<PlayerResumeSession>> GetResumeSessionsAsync(
+        params ulong[] guildId
+    )
+    {
+        var cursor = await _resumeSessions
+            .FindAsync(x => guildId.Contains(x.GuildId))
+            .ConfigureAwait(false);
+        var result = await cursor.ToListAsync().ConfigureAwait(false);
+        Log.Logger.Information(
+            "Got resume sessions for guilds with ids: {GuildIds}",
+            string.Join(", ", guildId)
+        );
+        return result;
     }
 }

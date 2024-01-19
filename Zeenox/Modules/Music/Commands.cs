@@ -5,6 +5,7 @@ using Fergun.Interactive;
 using Fergun.Interactive.Pagination;
 using Lavalink4NET.Players;
 using Lavalink4NET.Rest.Entities.Tracks;
+using Zeenox.Models;
 using Zeenox.Models.Player;
 using Zeenox.Modules.Music.Preconditions;
 
@@ -14,6 +15,32 @@ namespace Zeenox.Modules.Music;
 public class Commands : MusicBase
 {
     public InteractiveService InteractiveService { get; set; } = null!;
+
+    /*[SlashCommand("save", "save test")]
+    public async Task Save()
+    {
+        await DeferAsync(true).ConfigureAwait(false);
+        var player = await TryGetPlayerAsync(isDeferred: true).ConfigureAwait(false);
+        if (player is null)
+            return;
+
+        var session = new PlayerResumeSession(player);
+
+        await DatabaseService.SaveResumeSessionAsync(session).ConfigureAwait(false);
+        await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
+    }*/
+
+    [SlashCommand("resumesession", "resume test")]
+    public async Task ResumeAsync()
+    {
+        await DeferAsync(true).ConfigureAwait(false);
+        var player = await TryGetPlayerAsync(true, isDeferred: true).ConfigureAwait(false);
+        if (player is null)
+            return;
+
+        await player.ResumeSessionAsync(Context.User, Context.Client).ConfigureAwait(false);
+        await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
+    }
 
     [SlashCommand("actionhistory", "Shows every action that has been performed on the player.")]
     public async Task ShowActionHistoryAsync()
@@ -97,7 +124,6 @@ public class Commands : MusicBase
         }
 
         var tracks = results.Tracks.ToList();
-
         if (results.Playlist is not null)
         {
             await player
