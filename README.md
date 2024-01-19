@@ -1,7 +1,7 @@
 # Zeenox
 
 [![Discord](https://discordapp.com/api/guilds/863751874922676234/widget.png)](https://discord.gg/hGxaMkfMBR)
-[![License](https://img.shields.io/github/license/kmen1/kbot)](https://github.com/KMen1/Zeenox/blob/main/LICENSE)
+[![License](https://img.shields.io/github/license/kmen1/Zeenox)](https://github.com/KMen1/Zeenox/blob/main/LICENSE)
 [![CodeFactor](https://www.codefactor.io/repository/github/kmen1/zeenox/badge)](https://www.codefactor.io/repository/github/kmen1/zeenox)
 [![Deploy](https://github.com/KMen1/Zeenox/actions/workflows/deploy.yml/badge.svg)](https://github.com/KMen1/Zeenox/actions/workflows/deploy.yml)
 
@@ -11,6 +11,10 @@ A Discord music bot that focuses on speed and ease of usability, with a web dash
 
 Zeenox comes with a fully functional web interface that allows you to control the bot from your browser. It is built with Next.js and communicates with the bot via a REST API and websockets.
 For more information [click here](https://github.com/KMen1/Zeenox-Web)
+
+## Session Resuming
+
+Zeenox automatically saves any session that hasn't been fully completed, so you can resume listening later exactly where you left off.
 
 ## Interactive Player
 
