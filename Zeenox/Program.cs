@@ -1,4 +1,5 @@
 using System.Text;
+using Asp.Versioning;
 using Discord;
 using Discord.Addons.Hosting;
 using Discord.Interactions;
@@ -9,86 +10,69 @@ using Lavalink4NET.InactivityTracking;
 using Lavalink4NET.InactivityTracking.Extensions;
 using Lavalink4NET.Lyrics.Extensions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Mvc.Versioning;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using Serilog;
+using Serilog.Events;
 using Zeenox;
 using Zeenox.Services;
 
 Log.Logger = new LoggerConfiguration().Enrich
     .FromLogContext()
-    .MinimumLevel.Debug()
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft.Extensions.Http", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
     .WriteTo.Console()
     .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);
 var config = builder.Configuration;
-builder.Host
-    .UseSerilog()
-    .ConfigureDiscordHost(
-        (context, discordConfig) =>
+
+builder.Host.UseSerilog();
+
+builder.Services.AddDiscordHost(
+    (socketConfig, _) =>
+    {
+        socketConfig.SocketConfig = new DiscordSocketConfig
         {
-            discordConfig.SocketConfig = new DiscordSocketConfig
-            {
-#if DEBUG
-                LogLevel = LogSeverity.Verbose,
-#elif RELEASE
-                LogLevel = LogSeverity.Info,
-#endif
-                AlwaysDownloadUsers = true,
-                MessageCacheSize = 200,
-                GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.GuildMembers,
-                LogGatewayIntentWarnings = false,
-                DefaultRetryMode = RetryMode.AlwaysFail
-            };
-            discordConfig.Token = context.Configuration.GetSection("Discord")["Token"]!;
-        }
-    )
-    .UseInteractionService(
-        (_, interactionConfig) =>
-        {
-            interactionConfig.DefaultRunMode = RunMode.Async;
-#if DEBUG
-            interactionConfig.LogLevel = LogSeverity.Verbose;
-#elif RELEASE
-            interactionConfig.LogLevel = LogSeverity.Info;
-#endif
-            interactionConfig.UseCompiledLambda = true;
-            interactionConfig.LocalizationManager = new JsonLocalizationManager(
-                "/",
-                "CommandLocale"
-            );
-        }
-    )
-    .ConfigureServices(
-        (context, services) =>
-            services
-                .AddHostedService<InteractionHandler>()
-                .AddLavalink()
-                .AddInactivityTracking()
-                .ConfigureInactivityTracking(x =>
-                {
-                    x.DefaultTimeout = TimeSpan.FromMinutes(3);
-                    x.TrackingMode = InactivityTrackingMode.Any;
-                })
-                .AddLyrics()
-#if DEBUG
-                .AddLogging(x => x.AddConsole().SetMinimumLevel(LogLevel.Trace))
-#elif RELEASE
-                .AddLogging(x => x.AddConsole().SetMinimumLevel(LogLevel.Information))
-#endif
-                .AddSingleton<IMongoClient>(
-                    new MongoClient(
-                        context.Configuration.GetSection("MongoDB")["ConnectionString"]!
-                    )
-                )
-                .AddSingleton(new InteractiveConfig { DefaultTimeout = TimeSpan.FromMinutes(5) })
-                .AddSingleton<InteractiveService>()
-                .AddSingleton<DatabaseService>()
-                .AddSingleton<MusicService>()
-                .AddMemoryCache()
-    );
+            LogLevel = LogSeverity.Verbose,
+            AlwaysDownloadUsers = true,
+            MessageCacheSize = 200,
+            GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.GuildMembers,
+            LogGatewayIntentWarnings = false,
+            DefaultRetryMode = RetryMode.AlwaysFail
+        };
+
+        socketConfig.Token = config["Discord:Token"]!;
+    }
+);
+
+builder.Services.AddInteractionService(
+    (interactionConfig, _) =>
+    {
+        interactionConfig.DefaultRunMode = RunMode.Async;
+        interactionConfig.LogLevel = LogSeverity.Verbose;
+        interactionConfig.UseCompiledLambda = true;
+        interactionConfig.LocalizationManager = new JsonLocalizationManager("/", "CommandLocale");
+    }
+);
+
+builder.Services
+    .AddHostedService<InteractionHandler>()
+    .AddLavalink()
+    .AddInactivityTracking()
+    .ConfigureInactivityTracking(x =>
+    {
+        x.DefaultTimeout = TimeSpan.FromMinutes(3);
+        x.TrackingMode = InactivityTrackingMode.Any;
+    })
+    .AddLyrics()
+    .AddSingleton<IMongoClient>(new MongoClient(config["MongoDB:ConnectionString"]))
+    .AddSingleton(new InteractiveConfig { DefaultTimeout = TimeSpan.FromMinutes(5) })
+    .AddSingleton<InteractiveService>()
+    .AddSingleton<DatabaseService>()
+    .AddSingleton<MusicService>()
+    .AddMemoryCache();
 
 builder.Services
     .AddAuthentication(x =>
@@ -129,18 +113,19 @@ builder.Services.AddAuthorization();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddApiVersioning(o =>
-{
-    o.AssumeDefaultVersionWhenUnspecified = true;
-    o.DefaultApiVersion = new Microsoft.AspNetCore.Mvc.ApiVersion(1, 0);
-    o.ReportApiVersions = true;
-    o.ApiVersionReader = new UrlSegmentApiVersionReader();
-});
-builder.Services.AddVersionedApiExplorer(options =>
-{
-    options.GroupNameFormat = "'v'VVV";
-    options.SubstituteApiVersionInUrl = true;
-});
+builder.Services
+    .AddApiVersioning(o =>
+    {
+        o.AssumeDefaultVersionWhenUnspecified = true;
+        o.DefaultApiVersion = new ApiVersion(1, 0);
+        o.ReportApiVersions = true;
+        o.ApiVersionReader = new UrlSegmentApiVersionReader();
+    })
+    .AddApiExplorer(options =>
+    {
+        options.GroupNameFormat = "'v'VVV";
+        options.SubstituteApiVersionInUrl = true;
+    });
 builder.Services.AddRouting(x => x.LowercaseUrls = true);
 var app = builder.Build();
 

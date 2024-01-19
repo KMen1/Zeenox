@@ -2,6 +2,7 @@
 using System.Net.Mime;
 using System.Security.Claims;
 using System.Text;
+using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using Zeenox.Models.Socket;
