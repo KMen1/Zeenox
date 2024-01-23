@@ -18,8 +18,8 @@ public class ErrorHandlingMiddleware(RequestDelegate next)
             {
                 return;
             }
+            
             var result = JsonSerializer.Serialize(new { message = error.Message });
-            await response.WriteAsync(result).ConfigureAwait(false);
             response.ContentType = "application/json";
             response.StatusCode = (int)HttpStatusCode.InternalServerError;
             await response.WriteAsync(result).ConfigureAwait(false);
