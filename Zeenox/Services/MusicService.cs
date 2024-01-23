@@ -1,30 +1,31 @@
-﻿using Discord;
+﻿using System.Text.RegularExpressions;
+using Discord;
 using Discord.WebSocket;
+using HtmlAgilityPack;
 using Lavalink4NET;
 using Lavalink4NET.Clients;
 using Lavalink4NET.InactivityTracking;
 using Lavalink4NET.InactivityTracking.Events;
-using Lavalink4NET.Lyrics;
 using Lavalink4NET.Players;
+using Lavalink4NET.Tracks;
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
+using Zeenox.Models;
 using Zeenox.Players;
 
 namespace Zeenox.Services;
 
-public class MusicService
+public partial class MusicService
 {
     private readonly IAudioService _audioService;
     private readonly DatabaseService _databaseService;
-    private readonly ILyricsService _lyricsService;
 
     public MusicService(
         IAudioService audioService,
-        ILyricsService lyricsService,
         IInactivityTrackingService trackingService,
         DatabaseService databaseService
     )
     {
-        _lyricsService = lyricsService;
         _databaseService = databaseService;
         _audioService = audioService;
         trackingService.PlayerInactive += OnInactivePlayerAsync;
@@ -85,6 +86,8 @@ public class MusicService
                         InitialVolume =
                             (float)Math.Floor(guildConfig.MusicSettings.DefaultVolume / (double)2)
                             / 100f,
+                        ClearQueueOnStop = false,
+                        ClearHistoryOnStop = false,
                     }
                 ),
                 retrieveOptions
@@ -98,8 +101,78 @@ public class MusicService
     {
         var player = await TryGetPlayerAsync(guildId).ConfigureAwait(false);
 
-        return player?.CurrentTrack is null
-            ? null
-            : await _lyricsService.GetLyricsAsync(player.CurrentTrack).ConfigureAwait(false);
+        if (player?.CurrentItem is null)
+            return null;
+
+        if (player.CurrentItem.Lyrics is not null)
+            return player.CurrentItem.Lyrics;
+
+        var lyrics = await FetchLyrics(player.CurrentItem.Track.Track).ConfigureAwait(false);
+        player.SetLyrics(lyrics);
+        return lyrics;
     }
+
+    private static async Task<string?> FetchLyrics(LavalinkTrack track)
+    {
+        var sq = track.Title.Replace(" ", "+") + "+" + track.Author.Replace(" ", "+");
+        var ht = new HttpClient();
+        var responseString = await ht.GetStringAsync($"https://genius.com/api/search/multi?q={sq}")
+            .ConfigureAwait(false);
+        var geniusObject = JsonConvert.DeserializeObject<Root>(responseString);
+        var path = geniusObject?.response.sections
+            .Find(x => x.type == "song")
+            ?.hits.FirstOrDefault()
+            ?.result.path;
+
+        if (path is null)
+            return null;
+
+        var url = "https://genius.com" + path;
+
+        var web = new HtmlWeb();
+        var document = web.Load(url);
+        var element = document.DocumentNode.QuerySelectorAll(".Lyrics__Container-sc-1ynbvzw-1");
+
+        foreach (var div in element)
+        {
+            var children = div.ChildNodes.ToList();
+            for (int i = 0; i < children.Count; i++)
+            {
+                if (children[i].Name == "span")
+                {
+                    children.Remove(children[i--]);
+                    continue;
+                }
+
+                if (children[i].Name != "a")
+                    continue;
+
+                var newStr = children[i].ChildNodes.ToList().First(x => x.Name == "span").InnerHtml;
+                children.Remove(children[i]);
+
+                var newElement = document.CreateTextNode(newStr);
+                children.Insert(i, newElement);
+            }
+
+            div.ChildNodes.Clear();
+            foreach (var child in children)
+            {
+                div.AppendChild(child);
+            }
+        }
+
+        var first = element.First();
+        first.ChildNodes.RemoveAt(0);
+        while (first.ChildNodes[0].Name == "br" || first.ChildNodes[0].InnerText.Contains("["))
+        {
+            first.ChildNodes.RemoveAt(0);
+        }
+
+        var rawLyrics = string.Join(' ', element.Select(x => x.InnerHtml));
+        var regexed = SectionRegex().Replace(string.Join(' ', rawLyrics), "");
+        return regexed;
+    }
+
+    [GeneratedRegex(@"\[(.*?)\]")]
+    private static partial Regex SectionRegex();
 }

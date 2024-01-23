@@ -35,7 +35,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
     public async Task<IActionResult> GetLyrics()
     {
         var identity = HttpContext.User.Identity as ClaimsIdentity;
-        var guildId = ulong.Parse(identity!.FindFirst("guildId")!.Value);
+        var guildId = ulong.Parse(identity!.FindFirst("GUILD_ID")!.Value);
 
         var lyrics = await musicService.GetLyricsAsync(guildId).ConfigureAwait(false);
         return lyrics is null ? NotFound() : Ok(lyrics);

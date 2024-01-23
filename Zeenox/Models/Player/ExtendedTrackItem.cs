@@ -12,4 +12,5 @@ public class ExtendedTrackItem(TrackReference reference, IUser? requestedBy) : I
     public string Title => Track.SourceName == "spotify" ? $"{Track.Author} - {Track.Title}" : Track.Title;
     public string AlbumImageUrl => Track.ArtworkUri?.ToString() ?? "";
     public IUser? RequestedBy { get; } = requestedBy;
+    public string? Lyrics { get; set; }
 }
