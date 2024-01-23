@@ -63,6 +63,8 @@ public class MusicBase : ModuleBase
                         InitialVolume =
                             (float)Math.Floor(guildConfig.MusicSettings.DefaultVolume / (double)2)
                             / 100f,
+                        ClearQueueOnStop = false,
+                        ClearHistoryOnStop = false,
                     }
                 ),
                 retrieveOptions,
