@@ -7,7 +7,7 @@ public interface IAction
 {
     IUser User { get; }
     ActionType Type { get; }
-    DateTimeOffset Timestamp { get; }
+    long Timestamp { get; }
 
     string Stringify();
 }

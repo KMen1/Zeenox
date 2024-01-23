@@ -23,29 +23,12 @@ public class UserJsonConverter : JsonConverter<IUser>
     }
 }
 
-public class DateTimeOffsetJsonConverter : JsonConverter<DateTimeOffset>
-{
-    public override DateTimeOffset Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-    {
-        return DateTimeOffset.MaxValue;
-    }
-
-    public override void Write(
-        Utf8JsonWriter writer,
-        DateTimeOffset dateTimeOffset,
-        JsonSerializerOptions options)
-    {
-        JsonSerializer.Serialize(writer, dateTimeOffset.ToUnixTimeSeconds(), options);
-    }
-}
-
 public abstract class Action(IUser user, ActionType type) : IAction
 {
     [JsonConverter(typeof (UserJsonConverter))]
     public IUser User { get; } = user;
     public ActionType Type { get; } = type;
-    [JsonConverter(typeof (DateTimeOffsetJsonConverter))]
-    public DateTimeOffset Timestamp { get; } = DateTimeOffset.Now;
+    public long Timestamp { get; } = DateTimeOffset.Now.ToUnixTimeSeconds();
 
     public virtual string Stringify()
     {
@@ -55,7 +38,7 @@ public abstract class Action(IUser user, ActionType type) : IAction
     public string StringifyFull()
     {
         var sb = new StringBuilder();
-        sb.Append($"[<t:{Timestamp.ToUnixTimeSeconds()}:t>] {User.Mention} ");
+        sb.Append($"[<t:{Timestamp}:t>] {User.Mention} ");
         sb.Append(((IAction)this).Stringify());
         return sb.ToString();
     }
