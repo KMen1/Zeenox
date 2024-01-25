@@ -113,7 +113,7 @@ public abstract class MusicPlayer(IPlayerProperties<MusicPlayer, VoteLavalinkPla
         return Queue.ShuffleAsync();
     }
     
-    public void SetLyrics(string lyrics)
+    public void SetLyrics(string? lyrics)
     {
         if (CurrentItem is not null)
             CurrentItem.Lyrics = lyrics;
