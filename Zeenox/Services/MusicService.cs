@@ -19,14 +19,18 @@ public partial class MusicService
 {
     private readonly IAudioService _audioService;
     private readonly DatabaseService _databaseService;
+    private readonly HttpClient _httpClient;
+    private readonly HtmlWeb _htmlWeb = new();
 
     public MusicService(
         IAudioService audioService,
         IInactivityTrackingService trackingService,
-        DatabaseService databaseService
+        DatabaseService databaseService,
+        HttpClient httpClient
     )
     {
         _databaseService = databaseService;
+        _httpClient = httpClient;
         _audioService = audioService;
         trackingService.PlayerInactive += OnInactivePlayerAsync;
     }
@@ -112,11 +116,11 @@ public partial class MusicService
         return lyrics;
     }
 
-    private static async Task<string?> FetchLyrics(LavalinkTrack track)
+    private async Task<string?> FetchLyrics(LavalinkTrack track)
     {
         var sq = track.Title.Replace(" ", "+") + "+" + track.Author.Replace(" ", "+");
-        var ht = new HttpClient();
-        var responseString = await ht.GetStringAsync($"https://genius.com/api/search/multi?q={sq}")
+        var responseString = await _httpClient
+            .GetStringAsync($"https://genius.com/api/search/multi?q={sq}")
             .ConfigureAwait(false);
         var geniusObject = JsonConvert.DeserializeObject<Root>(responseString);
         var path = geniusObject?.response.sections
@@ -128,15 +132,13 @@ public partial class MusicService
             return null;
 
         var url = "https://genius.com" + path;
-
-        var web = new HtmlWeb();
-        var document = web.Load(url);
+        var document = _htmlWeb.Load(url);
         var element = document.DocumentNode.QuerySelectorAll(".Lyrics__Container-sc-1ynbvzw-1");
 
         foreach (var div in element)
         {
             var children = div.ChildNodes.ToList();
-            for (int i = 0; i < children.Count; i++)
+            for (var i = 0; i < children.Count; i++)
             {
                 if (children[i].Name == "span")
                 {
@@ -165,9 +167,9 @@ public partial class MusicService
         first.ChildNodes.RemoveAt(0);
         while (first.ChildNodes[0].Name == "br" || first.ChildNodes[0].InnerText.Contains("["))
         {
-            if (first.ChildNodes[0].InnerText.Contains("["))
+            if (first.ChildNodes[0].InnerText.Contains('['))
             {
-                while(first.ChildNodes[0].Name != "br")
+                while (first.ChildNodes[0].Name != "br")
                     first.ChildNodes.RemoveAt(0);
             }
             first.ChildNodes.RemoveAt(0);
