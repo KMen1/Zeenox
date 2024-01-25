@@ -101,16 +101,16 @@ public class MusicBase : ModuleBase
                 => "You must be in the same voice channel as the bot.",
 
             PlayerRetrieveStatus.PreconditionFailed
-                when result.Precondition == PlayerPrecondition.Playing
+                when Equals(result.Precondition, PlayerPrecondition.Playing)
                 => "The player is currently now playing any track.",
             PlayerRetrieveStatus.PreconditionFailed
-                when result.Precondition == PlayerPrecondition.NotPaused
+                when Equals(result.Precondition, PlayerPrecondition.NotPaused)
                 => "The player is already paused.",
             PlayerRetrieveStatus.PreconditionFailed
-                when result.Precondition == PlayerPrecondition.Paused
+                when Equals(result.Precondition, PlayerPrecondition.Paused)
                 => "The player is not paused.",
             PlayerRetrieveStatus.PreconditionFailed
-                when result.Precondition == PlayerPrecondition.QueueEmpty
+                when Equals(result.Precondition, PlayerPrecondition.QueueEmpty)
                 => "The queue is empty.",
 
             _ => "Unknown error.",
