@@ -165,6 +165,11 @@ public partial class MusicService
         first.ChildNodes.RemoveAt(0);
         while (first.ChildNodes[0].Name == "br" || first.ChildNodes[0].InnerText.Contains("["))
         {
+            if (first.ChildNodes[0].InnerText.Contains("["))
+            {
+                while(first.ChildNodes[0].Name != "br")
+                    first.ChildNodes.RemoveAt(0);
+            }
             first.ChildNodes.RemoveAt(0);
         }
 
