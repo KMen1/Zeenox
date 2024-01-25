@@ -3,7 +3,6 @@ using Discord;
 using Discord.Interactions;
 using Fergun.Interactive;
 using Fergun.Interactive.Pagination;
-using Lavalink4NET.Players;
 using Lavalink4NET.Rest.Entities.Tracks;
 using Zeenox.Models.Player;
 using Zeenox.Modules.Music.Preconditions;
@@ -14,20 +13,6 @@ namespace Zeenox.Modules.Music;
 public class Commands : MusicBase
 {
     public InteractiveService InteractiveService { get; set; } = null!;
-
-    /*[SlashCommand("save", "save test")]
-    public async Task Save()
-    {
-        await DeferAsync(true).ConfigureAwait(false);
-        var player = await TryGetPlayerAsync(isDeferred: true).ConfigureAwait(false);
-        if (player is null)
-            return;
-
-        var session = new PlayerResumeSession(player);
-
-        await DatabaseService.SaveResumeSessionAsync(session).ConfigureAwait(false);
-        await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
-    }*/
 
     [SlashCommand("resumesession", "resume test")]
     public async Task ResumeAsync()
@@ -146,7 +131,7 @@ public class Commands : MusicBase
     {
         await DeferAsync(true).ConfigureAwait(false);
 
-        var player = await TryGetPlayerAsync().ConfigureAwait(false);
+        var player = await TryGetPlayerAsync(isDeferred: true).ConfigureAwait(false);
         if (player is null)
             return;
 
@@ -169,7 +154,7 @@ public class Commands : MusicBase
     {
         await DeferAsync(true).ConfigureAwait(false);
 
-        var player = await TryGetPlayerAsync().ConfigureAwait(false);
+        var player = await TryGetPlayerAsync(isDeferred: true).ConfigureAwait(false);
         if (player is null)
             return;
 
@@ -191,7 +176,7 @@ public class Commands : MusicBase
     )
     {
         await DeferAsync(true).ConfigureAwait(false);
-        var player = await TryGetPlayerAsync().ConfigureAwait(false);
+        var player = await TryGetPlayerAsync(isDeferred: true).ConfigureAwait(false);
         if (player is null)
             return;
 
@@ -205,7 +190,7 @@ public class Commands : MusicBase
     public async Task ShuffleAsync()
     {
         await DeferAsync(true).ConfigureAwait(false);
-        var player = await TryGetPlayerAsync().ConfigureAwait(false);
+        var player = await TryGetPlayerAsync(isDeferred: true).ConfigureAwait(false);
         if (player is null)
             return;
 
@@ -219,7 +204,7 @@ public class Commands : MusicBase
     public async Task DistinctAsync()
     {
         await DeferAsync(true).ConfigureAwait(false);
-        var player = await TryGetPlayerAsync().ConfigureAwait(false);
+        var player = await TryGetPlayerAsync(isDeferred: true).ConfigureAwait(false);
         if (player is null)
             return;
 
@@ -231,7 +216,7 @@ public class Commands : MusicBase
     [SlashCommand("queue", "Shows the queue.")]
     public async Task ShowQueueAsync()
     {
-        var player = await TryGetPlayerAsync().ConfigureAwait(false);
+        var player = await TryGetPlayerAsync(isDeferred: true).ConfigureAwait(false);
         if (player is null)
             return;
 
@@ -280,7 +265,7 @@ public class Commands : MusicBase
     public async Task ClearAsync()
     {
         await DeferAsync(true).ConfigureAwait(false);
-        var player = await TryGetPlayerAsync().ConfigureAwait(false);
+        var player = await TryGetPlayerAsync(isDeferred: true).ConfigureAwait(false);
         if (player is null)
             return;
 
@@ -294,7 +279,7 @@ public class Commands : MusicBase
     public async Task MoveAsync([MinValue(1)] int from, [MinValue(2)] int to)
     {
         await DeferAsync(true).ConfigureAwait(false);
-        var player = await TryGetPlayerAsync().ConfigureAwait(false);
+        var player = await TryGetPlayerAsync(isDeferred: true).ConfigureAwait(false);
         if (player is null)
             return;
 
@@ -308,7 +293,7 @@ public class Commands : MusicBase
     public async Task ReverseAsync()
     {
         await DeferAsync(true).ConfigureAwait(false);
-        var player = await TryGetPlayerAsync().ConfigureAwait(false);
+        var player = await TryGetPlayerAsync(isDeferred: true).ConfigureAwait(false);
         if (player is null)
             return;
 
