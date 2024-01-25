@@ -5,7 +5,6 @@ using Fergun.Interactive;
 using Fergun.Interactive.Pagination;
 using Lavalink4NET.Players;
 using Lavalink4NET.Rest.Entities.Tracks;
-using Zeenox.Models;
 using Zeenox.Models.Player;
 using Zeenox.Modules.Music.Preconditions;
 
@@ -124,22 +123,14 @@ public class Commands : MusicBase
         }
 
         var tracks = results.Tracks.ToList();
-        if (results.Playlist is not null)
+        if (results.IsPlaylist)
         {
-            await player
-                .PlayAsync(
-                    Context.User,
-                    tracks.Select(x => new ExtendedTrackItem(new TrackReference(x), Context.User))
-                )
-                .ConfigureAwait(false);
+            await player.PlayAsync(Context.User, results).ConfigureAwait(false);
         }
         else
         {
             await player
-                .PlayAsync(
-                    Context.User,
-                    new ExtendedTrackItem(new TrackReference(tracks[0]), Context.User)
-                )
+                .PlayAsync(Context.User, new ExtendedTrackItem(tracks[0], Context.User))
                 .ConfigureAwait(false);
         }
 

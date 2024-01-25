@@ -14,11 +14,3 @@ public class PlayerResumeSession(ulong guildId, ulong channelId, ExtendedTrackDt
 
     public PlayerResumeSession(LoggedPlayer player) : this(player.GuildId, player.VoiceChannelId, new ExtendedTrackDto(player.CurrentItem ?? player.LastCurrentItem ?? (ExtendedTrackItem)player.Queue[0]), player.Queue.Select(x => new ExtendedTrackDto((ExtendedTrackItem)x)).ToList()) { }
 }
-
-public class ExtendedTrackDto(string id, ulong requesterId)
-{
-    public string Id { get; set; } = id;
-    public ulong RequesterId { get; set; } = requesterId;
-    
-    public ExtendedTrackDto(ExtendedTrackItem track) : this(track.Track.Track.ToString(), track.RequestedBy?.Id ?? 0) { }
-}

@@ -18,11 +18,11 @@ public class PlayerResumeSessionDto(string channelName, TrackDto currentTrack, i
     public PlayerResumeSessionDto(PlayerResumeSession resumeSession, DiscordSocketClient client) :
         this(((IVoiceChannel)client.GetChannel(resumeSession.ChannelId)).Name,
             new TrackDto(new ExtendedTrackItem(
-                new TrackReference(LavalinkTrack.Parse(resumeSession.CurrentTrack.Id, null)),
+                LavalinkTrack.Parse(resumeSession.CurrentTrack.Id, null),
                 client.GetUser(resumeSession.CurrentTrack.RequesterId))),
             resumeSession.Queue.Count,
             resumeSession.Queue.Take(5).Select(x =>
-                new TrackDto(new ExtendedTrackItem(new TrackReference(LavalinkTrack.Parse(x.Id, null)),
+                new TrackDto(new ExtendedTrackItem(LavalinkTrack.Parse(x.Id, null),
                     client.GetUser(x.RequesterId)))).ToList(), resumeSession.Timestamp) {}
 
     public static PlayerResumeSessionDto? Create(PlayerResumeSession? resumeSession, DiscordSocketClient client)

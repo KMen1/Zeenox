@@ -2,6 +2,7 @@
 using Discord.WebSocket;
 using Lavalink4NET.Players;
 using Lavalink4NET.Players.Queued;
+using Lavalink4NET.Rest.Entities.Tracks;
 using Lavalink4NET.Tracks;
 using Zeenox.Enums;
 using Zeenox.Models;
@@ -45,7 +46,15 @@ public sealed class LoggedPlayer
     public async Task<int> PlayAsync(IUser user, IEnumerable<ExtendedTrackItem> tracksEnumerable)
     {
         var tracks = tracksEnumerable.ToList();
-        await AddActionAsync(new EnqueuePlaylistAction(user, tracks)).ConfigureAwait(false);
+        await AddActionAsync(new EnqueuePlaylistAction(user, null, tracks)).ConfigureAwait(false);
+        var result = await base.PlayAsync(tracks).ConfigureAwait(false);
+        return result;
+    }
+    
+    public async Task<int> PlayAsync(IUser user, TrackLoadResult trackLoadResult)
+    {
+        var tracks = trackLoadResult.Tracks.Select(x => new ExtendedTrackItem(x, user)).ToList();
+        await AddActionAsync(new EnqueuePlaylistAction(user, trackLoadResult.Playlist, tracks)).ConfigureAwait(false);
         var result = await base.PlayAsync(tracks).ConfigureAwait(false);
         return result;
     }
@@ -189,13 +198,13 @@ public sealed class LoggedPlayer
         var resumeSession = await DbService.GetResumeSessionAsync(GuildId).ConfigureAwait(false);
         if (resumeSession is null)
             return;
-        var track = new ExtendedTrackItem(new TrackReference(LavalinkTrack.Parse(resumeSession.CurrentTrack.Id, null)), client.GetUser(resumeSession.CurrentTrack.RequesterId));
-        var queue = resumeSession.Queue.Select(x => new ExtendedTrackItem(new TrackReference(LavalinkTrack.Parse(x.Id, null)), client.GetUser(x.RequesterId))).ToList();
+        var track = new ExtendedTrackItem(LavalinkTrack.Parse(resumeSession.CurrentTrack.Id, null), client.GetUser(resumeSession.CurrentTrack.RequesterId));
+        var queue = resumeSession.Queue.Select(x => new ExtendedTrackItem(LavalinkTrack.Parse(x.Id, null), client.GetUser(x.RequesterId))).ToList();
 
         if (queue.Count > 0)
         {
             await Queue.AddRangeAsync(queue).ConfigureAwait(false);
-            await AddActionAsync(new EnqueuePlaylistAction(user, queue)).ConfigureAwait(false);
+            await AddActionAsync(new EnqueuePlaylistAction(user, null, queue)).ConfigureAwait(false);
         }
         await PlayAsync(user, track, false).ConfigureAwait(false);
         await DbService.DeleteResumeSessionAsync(GuildId).ConfigureAwait(false);

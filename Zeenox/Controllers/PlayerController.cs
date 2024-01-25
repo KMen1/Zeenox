@@ -87,11 +87,11 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
 
         if (result.IsPlaylist)
         {
-            await player.PlayAsync(user, result.Tracks.Select(x => new ExtendedTrackItem(new TrackReference(x), user))).ConfigureAwait(false);
+            await player.PlayAsync(user, result).ConfigureAwait(false);
             return Ok();
         }
         
-        await player.PlayAsync(user, new ExtendedTrackItem(new TrackReference(result.Tracks[0]), user), false).ConfigureAwait(false);
+        await player.PlayAsync(user, new ExtendedTrackItem(result.Tracks[0], user), false).ConfigureAwait(false);
         return Ok();
     }
     
@@ -115,7 +115,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
             return NotFound();
         }
         
-        await player.PlayAsync(user, new ExtendedTrackItem(new TrackReference(track), user)).ConfigureAwait(false);
+        await player.PlayAsync(user, new ExtendedTrackItem(track, user)).ConfigureAwait(false);
         return Ok();
     }
 
