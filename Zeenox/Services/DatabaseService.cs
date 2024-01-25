@@ -14,9 +14,17 @@ public sealed class DatabaseService
     public DatabaseService(IMongoClient mongoClient, IConfiguration config, IMemoryCache cache)
     {
         _cache = cache;
-        var database = mongoClient.GetDatabase(config["MongoDB:Database"]!);
-        _configs = database.GetCollection<GuildConfig>("configs");
-        _resumeSessions = database.GetCollection<PlayerResumeSession>("resumeSessions");
+        var database = mongoClient.GetDatabase(
+            config["MongoDB:Database"] ?? throw new Exception("MongoDB database name is not set!")
+        );
+        _configs = database.GetCollection<GuildConfig>(
+            config["MongoDB:ConfigCollection"]
+                ?? throw new Exception("MongoDB config collection name is not set!")
+        );
+        _resumeSessions = database.GetCollection<PlayerResumeSession>(
+            config["MongoDB:ResumeSessionCollection"]
+                ?? throw new Exception("MongoDB resume session collection name is not set!")
+        );
     }
 
     private async Task AddGuildConfigAsync(ulong guildId)
@@ -73,12 +81,12 @@ public sealed class DatabaseService
             .ConfigureAwait(false);
         var result = await cursor.FirstOrDefaultAsync().ConfigureAwait(false);
         Log.Logger.Information("Got resume session for guild with id: {GuildId}", guildId);
-        
+
         //if (result is not null)
         //    await _resumeSessions.DeleteOneAsync(x => x.GuildId == guildId).ConfigureAwait(false);
         return result;
     }
-    
+
     public async Task DeleteResumeSessionAsync(ulong guildId)
     {
         await _resumeSessions.DeleteOneAsync(x => x.GuildId == guildId).ConfigureAwait(false);

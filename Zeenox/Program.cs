@@ -43,7 +43,8 @@ builder.Services.AddDiscordHost(
             DefaultRetryMode = RetryMode.AlwaysFail
         };
 
-        socketConfig.Token = config["Discord:Token"]!;
+        socketConfig.Token =
+            config["Discord:Token"] ?? throw new Exception("Discord token is not set!");
     }
 );
 
@@ -60,6 +61,14 @@ builder.Services.AddInteractionService(
 builder.Services
     .AddHostedService<InteractionHandler>()
     .AddLavalink()
+    .ConfigureLavalink(x =>
+    {
+        x.Passphrase =
+            config["Lavalink:Password"] ?? throw new Exception("Lavalink password is not set!");
+        x.BaseAddress = new Uri(
+            config["Lavalink:Host"] ?? throw new Exception("Lavalink host is not set!")
+        );
+    })
     .AddInactivityTracking()
     .ConfigureInactivityTracking(x =>
     {
@@ -67,12 +76,18 @@ builder.Services
         x.TrackingMode = InactivityTrackingMode.Any;
     })
     .AddLyrics()
-    .AddSingleton<IMongoClient>(new MongoClient(config["MongoDB:ConnectionString"]))
+    .AddSingleton<IMongoClient>(
+        new MongoClient(
+            config["MongoDB:ConnectionString"]
+                ?? throw new Exception("MongoDB connection string is not set!")
+        )
+    )
     .AddSingleton(new InteractiveConfig { DefaultTimeout = TimeSpan.FromMinutes(5) })
     .AddSingleton<InteractiveService>()
     .AddSingleton<DatabaseService>()
     .AddSingleton<MusicService>()
-    .AddMemoryCache();
+    .AddMemoryCache()
+    .AddHttpClient();
 
 builder.Services
     .AddAuthentication(x =>
@@ -85,10 +100,14 @@ builder.Services
     {
         x.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidIssuer = config["JwtSettings:Issuer"],
-            ValidAudience = config["JwtSettings:Audience"],
+            ValidIssuer =
+                config["JwtSettings:Issuer"] ?? throw new Exception("JWT issuer is not set!"),
+            ValidAudience =
+                config["JwtSettings:Audience"] ?? throw new Exception("JWT audience is not set!"),
             IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(config["JwtSettings:Key"]!)
+                Encoding.UTF8.GetBytes(
+                    config["JwtSettings:Key"] ?? throw new Exception("JWT key is not set!")
+                )
             ),
             ValidateIssuer = true,
             ValidateAudience = true,
@@ -97,17 +116,7 @@ builder.Services
         };
     });
 
-builder.Services.AddCors(x =>
-{
-    x.AddPolicy(
-        "origin",
-        y =>
-        {
-            y.WithOrigins("zeenox-web.vercel.app");
-        }
-    );
-});
-
+builder.Services.AddCors();
 builder.Services.AddAuthorization();
 
 builder.Services.AddControllers();
@@ -137,7 +146,11 @@ if (app.Environment.IsDevelopment())
 else
 {
     app.UseHttpsRedirection();
-    app.UseCors("origin");
+    app.UseCors(x =>
+    {
+        x.WithOrigins(config["FrontendUrl"] ?? throw new Exception("Frontend URL is not set!"))
+            .AllowAnyMethod();
+    });
 }
 
 app.UseAuthentication();

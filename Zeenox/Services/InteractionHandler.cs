@@ -8,41 +8,32 @@ using IResult = Discord.Interactions.IResult;
 
 namespace Zeenox.Services;
 
-public sealed class InteractionHandler : DiscordClientService
+public sealed class InteractionHandler(
+    DiscordSocketClient client,
+    ILogger<DiscordClientService> logger,
+    InteractionService interactionService,
+    IServiceProvider provider,
+    IConfiguration config)
+    : DiscordClientService(client, logger)
 {
-    private readonly InteractionService _interactionService;
-    private readonly IServiceProvider _provider;
-    private readonly IConfiguration _config;
-
-    public InteractionHandler(
-        DiscordSocketClient client,
-        ILogger<DiscordClientService> logger,
-        InteractionService interactionService,
-        IServiceProvider provider,
-        IConfiguration config
-    )
-        : base(client, logger)
-    {
-        _interactionService = interactionService;
-        _provider = provider;
-        _config = config;
-    }
-
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         Client.InteractionCreated += HandleInteractionAsync;
-        _interactionService.SlashCommandExecuted += HandleSlashCommandResultAsync;
-        _interactionService.ComponentCommandExecuted += HandleComponentCommandResultAsync;
+        interactionService.SlashCommandExecuted += HandleSlashCommandResultAsync;
+        interactionService.ComponentCommandExecuted += HandleComponentCommandResultAsync;
 
         await Client.WaitForReadyAsync(stoppingToken).ConfigureAwait(false);
         await Client
-            .SetGameAsync(_config.GetSection("Discord")["Activity"], type: ActivityType.Listening)
+            .SetGameAsync(
+                config["Discord:Activity"] ?? throw new Exception("Discord activity not set!"),
+                type: ActivityType.Listening
+            )
             .ConfigureAwait(false);
-        await _interactionService
-            .AddModulesAsync(Assembly.GetEntryAssembly(), _provider)
+        await interactionService
+            .AddModulesAsync(Assembly.GetEntryAssembly(), provider)
             .ConfigureAwait(false);
-        await _interactionService
-            .AddModulesGloballyAsync(true, _interactionService.Modules.ToArray())
+        await interactionService
+            .AddModulesGloballyAsync(true, interactionService.Modules.ToArray())
             .ConfigureAwait(false);
     }
 
@@ -75,7 +66,7 @@ public sealed class InteractionHandler : DiscordClientService
     private Task HandleInteractionAsync(SocketInteraction interaction)
     {
         var ctx = new SocketInteractionContext(Client, interaction);
-        return _interactionService.ExecuteCommandAsync(ctx, _provider);
+        return interactionService.ExecuteCommandAsync(ctx, provider);
     }
 
     private static string GetErrorReason(IResult result)
