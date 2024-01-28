@@ -118,7 +118,9 @@ public partial class MusicService
 
     private async Task<string?> FetchLyrics(LavalinkTrack track)
     {
-        var sq = $"{track.Title.Replace(" ", "+")}+{track.Author.Split(",").First().Replace(" ", "+")}";
+        var title = ParenthesesRegex().Replace(track.Title, "").Replace(" ", "+");
+        var author = ParenthesesRegex().Replace(track.Author.Split(",").First(), "").Replace(" ", "+");
+        var sq = $"{title}+{author}";
         var responseString = await _httpClient
             .GetStringAsync($"https://genius.com/api/search/multi?q={sq}")
             .ConfigureAwait(false);
@@ -182,4 +184,7 @@ public partial class MusicService
 
     [GeneratedRegex(@"\[(.*?)\]")]
     private static partial Regex SectionRegex();
+    
+    [GeneratedRegex(@"\(([^)]*)\)")]
+    private static partial Regex ParenthesesRegex();
 }
