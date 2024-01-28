@@ -15,7 +15,7 @@ public class EnqueuePlaylistAction(IUser user, PlaylistInformation? playlistInfo
         playlistInformation?.AdditionalInformation["artworkUrl"].ToString() : null;
     public string? Author { get; } = (playlistInformation?.AdditionalInformation.ContainsKey("author")).GetValueOrDefault() ? 
         playlistInformation?.AdditionalInformation["author"].ToString() : null;
-    public List<TrackDto> Tracks { get; } = trackItems.Select(x => new TrackDto(x)).ToList();
+    public List<TrackPayload> Tracks { get; } = trackItems.Select(x => new TrackPayload(x)).ToList();
     public int Count => Tracks.Count;
     
     public override string Stringify()

@@ -7,7 +7,7 @@ namespace Zeenox.Models.Actions.Queue;
 
 public class EnqueueTrackAction(IUser user, ExtendedTrackItem trackItem) : QueueAction(user, QueueActionType.AddTrack)
 {
-    public TrackDto Track { get; } = new(trackItem);
+    public TrackPayload Track { get; } = new(trackItem);
 
     public override string Stringify()
     {

@@ -118,7 +118,7 @@ public partial class MusicService
 
     private async Task<string?> FetchLyrics(LavalinkTrack track)
     {
-        var sq = track.Title.Replace(" ", "+") + "+" + track.Author.Replace(" ", "+");
+        var sq = $"{track.Title.Replace(" ", "+")}+{track.Author.Split(",").First().Replace(" ", "+")}";
         var responseString = await _httpClient
             .GetStringAsync($"https://genius.com/api/search/multi?q={sq}")
             .ConfigureAwait(false);
@@ -131,7 +131,7 @@ public partial class MusicService
         if (path is null)
             return null;
 
-        var url = "https://genius.com" + path;
+        var url = $"https://genius.com{path}";
         var document = _htmlWeb.Load(url);
         var element = document.DocumentNode.QuerySelectorAll(".Lyrics__Container-sc-1ynbvzw-1");
 
@@ -165,7 +165,7 @@ public partial class MusicService
 
         var first = element.First();
         first.ChildNodes.RemoveAt(0);
-        while (first.ChildNodes[0].Name == "br" || first.ChildNodes[0].InnerText.Contains("["))
+        while (first.ChildNodes[0].Name == "br" || first.ChildNodes[0].InnerText.Contains('['))
         {
             if (first.ChildNodes[0].InnerText.Contains('['))
             {

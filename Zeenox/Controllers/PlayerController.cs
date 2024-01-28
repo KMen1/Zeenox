@@ -3,7 +3,6 @@ using Asp.Versioning;
 using Discord;
 using Discord.WebSocket;
 using Lavalink4NET;
-using Lavalink4NET.Players;
 using Lavalink4NET.Rest.Entities.Tracks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

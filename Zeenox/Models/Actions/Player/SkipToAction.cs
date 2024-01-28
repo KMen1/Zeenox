@@ -7,8 +7,8 @@ namespace Zeenox.Models.Actions.Player;
 
 public class SkipToAction(IUser user, ExtendedTrackItem previous, ExtendedTrackItem trackItem) : Action(user, ActionType.Skip)
 {
-    public TrackDto PreviousTrack { get; } = new(previous);
-    public TrackDto Track { get; } = new(trackItem);
+    public TrackPayload PreviousTrack { get; } = new(previous);
+    public TrackPayload Track { get; } = new(trackItem);
     
     public override string Stringify()
     {

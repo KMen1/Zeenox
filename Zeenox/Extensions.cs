@@ -65,7 +65,7 @@ public static class Extensions
         await socket
             .SendTextAsync(
                 JsonSerializer.Serialize(
-                    new PlayerInitMessage(
+                    new InitPlayerPayload(
                         player.VoiceChannel.Name,
                         player.StartedAt.ToUnixTimeSeconds(),
                         player.Position?.Position.Seconds ?? 0,
@@ -75,22 +75,22 @@ public static class Extensions
             )
             .ConfigureAwait(false);
         await socket
-            .SendTextAsync(JsonSerializer.Serialize(new PlayerDto(player)))
+            .SendTextAsync(JsonSerializer.Serialize(new UpdatePlayerPayload(player)))
             .ConfigureAwait(false);
         await socket
-            .SendTextAsync(JsonSerializer.Serialize(new TrackDto(player.CurrentItem)))
+            .SendTextAsync(JsonSerializer.Serialize(new TrackPayload(player.CurrentItem)))
             .ConfigureAwait(false);
         await socket
-            .SendTextAsync(JsonSerializer.Serialize(new QueueDto(player)))
+            .SendTextAsync(JsonSerializer.Serialize(new UpdateQueuePayload(player)))
             .ConfigureAwait(false);
         await socket
-            .SendTextAsync(JsonSerializer.Serialize(new ActionsDto((LoggedPlayer)player)))
+            .SendTextAsync(JsonSerializer.Serialize(new AddActionsPayload(player)))
             .ConfigureAwait(false);
     }
 
     public static async Task SendSocketMessagesAsync(
         this WebSocket socket,
-        SocketPlayer player,
+        LoggedPlayer player,
         bool updatePlayer,
         bool updateTrack,
         bool updateQueue,
@@ -100,28 +100,28 @@ public static class Extensions
         if (updatePlayer)
         {
             await socket
-                .SendTextAsync(JsonSerializer.Serialize(new PlayerDto(player)))
+                .SendTextAsync(JsonSerializer.Serialize(new UpdatePlayerPayload(player)))
                 .ConfigureAwait(false);
         }
 
         if (updateTrack)
         {
             await socket
-                .SendTextAsync(JsonSerializer.Serialize(new TrackDto(player.CurrentItem)))
+                .SendTextAsync(JsonSerializer.Serialize(new TrackPayload(player.CurrentItem)))
                 .ConfigureAwait(false);
         }
 
         if (updateQueue)
         {
             await socket
-                .SendTextAsync(JsonSerializer.Serialize(new QueueDto(player)))
+                .SendTextAsync(JsonSerializer.Serialize(new UpdateQueuePayload(player)))
                 .ConfigureAwait(false);
         }
 
         if (updateActions)
         {
             await socket
-                .SendTextAsync(JsonSerializer.Serialize(new ActionDto((LoggedPlayer)player)))
+                .SendTextAsync(JsonSerializer.Serialize(new AddActionPayload(player)))
                 .ConfigureAwait(false);
         }
     }

@@ -111,16 +111,7 @@ public class SocketPlayer
         _webSockets.TryRemove(userId, out _);
     }
 
-    private void RemoveDeadSockets()
-    {
-        var closedSockets = _webSockets.Where(kvp => kvp.Value.State != WebSocketState.Open).ToList();
-        foreach (var item in closedSockets)
-        {
-            RemoveSocket(item.Key);
-        }
-    }
-
-    public async Task UpdateSocketsAsync(
+    protected async Task UpdateSocketsAsync(
         bool updatePlayer = false,
         bool updateTrack = false,
         bool updateQueue = false,
@@ -129,11 +120,12 @@ public class SocketPlayer
     {
         if (_webSockets.IsEmpty)
             return;
-        //RemoveDeadSockets();
 
         foreach (var (_, socket) in _webSockets)
         {
-            await socket.SendSocketMessagesAsync(this, updatePlayer, updateTrack, updateQueue, updateActions).ConfigureAwait(false);
+            if (socket.State != WebSocketState.Open)
+                continue;
+            await socket.SendSocketMessagesAsync((LoggedPlayer)this, updatePlayer, updateTrack, updateQueue, updateActions).ConfigureAwait(false);
         }
     }
 
@@ -141,8 +133,9 @@ public class SocketPlayer
     {
         foreach (var (_, socket) in _webSockets)
         {
-            if (socket.State == WebSocketState.Open)
-                await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Disposed", CancellationToken.None).ConfigureAwait(false);
+            if (socket.State != WebSocketState.Open)
+                continue;
+            await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Disposed", CancellationToken.None).ConfigureAwait(false);
             socket.Dispose();
         }
 

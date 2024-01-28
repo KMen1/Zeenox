@@ -8,7 +8,7 @@ namespace Zeenox.Models.Actions.Queue;
 public class MoveTrackAction(IUser user, int from, int to, ExtendedTrackItem trackItem) : QueueAction(user,
     QueueActionType.MoveTrack)
 {
-    public TrackDto Track { get; } = new(trackItem);
+    public TrackPayload Track { get; } = new(trackItem);
     public int From { get; } = from;
     public int To { get; } = to;
     

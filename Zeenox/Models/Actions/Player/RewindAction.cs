@@ -7,7 +7,7 @@ namespace Zeenox.Models.Actions.Player;
 
 public class RewindAction(IUser user, ExtendedTrackItem trackItem) : Action(user, ActionType.Rewind)
 {
-    public TrackDto Track { get; } = new(trackItem);
+    public TrackPayload Track { get; } = new(trackItem);
     
     public override string Stringify()
     {

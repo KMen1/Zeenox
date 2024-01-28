@@ -34,12 +34,12 @@ public class GuildsController(DiscordSocketClient client, DatabaseService databa
 
         if (!includeResumeSessions)
         {
-            var guildsList = guilds.Select(x => new GuildDto(x, null));
+            var guildsList = guilds.Select(x => new BasicDiscordGuild(x, null));
             return Content(JsonConvert.SerializeObject(guildsList));
         }
         
         var resumeSessions = await databaseService.GetResumeSessionsAsync(guilds.Select(x => x.Id).ToArray()).ConfigureAwait(false);
-        var guildsListWithResumeSessions = guilds.Select(x => new GuildDto(x, PlayerResumeSessionDto.Create(resumeSessions.FirstOrDefault(y => y.GuildId == x.Id), client)));
+        var guildsListWithResumeSessions = guilds.Select(x => new BasicDiscordGuild(x, PlayerResumeSessionDto.Create(resumeSessions.FirstOrDefault(y => y.GuildId == x.Id), client)));
         return Content(JsonConvert.SerializeObject(guildsListWithResumeSessions));
     }
 
@@ -55,6 +55,6 @@ public class GuildsController(DiscordSocketClient client, DatabaseService databa
 
         var resumeSession = await databaseService.GetResumeSessionAsync(id).ConfigureAwait(false);
         var resumeSessionDto = resumeSession is null ? null : new PlayerResumeSessionDto(resumeSession, client);
-        return Ok(JsonConvert.SerializeObject(new GuildDto(guild, resumeSessionDto)));
+        return Ok(JsonConvert.SerializeObject(new BasicDiscordGuild(guild, resumeSessionDto)));
     }
 }

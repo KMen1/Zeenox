@@ -3,18 +3,18 @@ using Discord;
 
 namespace Zeenox.Models.Socket;
 
-public class UserDto
+public class BasicDiscordUser
 {
     public string Username { get; init; }
     public string DisplayName { get; init; }
     public string? AvatarUrl { get; init; }
 
-    public UserDto(IUser? user) : this(user?.Username ?? "", user?.GlobalName ?? "", user?.GetAvatarUrl())
+    public BasicDiscordUser(IUser? user) : this(user?.Username ?? "", user?.GlobalName ?? "", user?.GetAvatarUrl())
     {
     }
 
     [JsonConstructor]
-    public UserDto(string username, string displayName, string? avatarUrl)
+    public BasicDiscordUser(string username, string displayName, string? avatarUrl)
     {
         Username = username;
         DisplayName = displayName;

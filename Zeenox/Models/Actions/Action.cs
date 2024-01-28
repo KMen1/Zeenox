@@ -19,7 +19,7 @@ public class UserJsonConverter : JsonConverter<IUser>
         IUser user,
         JsonSerializerOptions options)
     {
-        JsonSerializer.Serialize(writer, new UserDto(user), options);
+        JsonSerializer.Serialize(writer, new BasicDiscordUser(user), options);
     }
 }
 

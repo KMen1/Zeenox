@@ -7,7 +7,7 @@ namespace Zeenox.Models.Actions.Queue;
 
 public class RemoveTrackAction(IUser user, ExtendedTrackItem trackItem) : QueueAction(user, QueueActionType.RemoveTrack)
 {
-    public TrackDto Track { get; } = new(trackItem);
+    public TrackPayload Track { get; } = new(trackItem);
     
     public override string Stringify()
     {
