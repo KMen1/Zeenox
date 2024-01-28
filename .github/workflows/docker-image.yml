@@ -27,4 +27,4 @@ jobs:
         with:
           push: true
           file: ./Zeenox/Dockerfile
-          tags: user/zeenox:latest
+          tags: kmen/zeenox:latest
