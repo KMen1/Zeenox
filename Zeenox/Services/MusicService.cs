@@ -167,7 +167,6 @@ public partial class MusicService
         }
 
         var first = element.First();
-        first.ChildNodes.RemoveAt(0);
         while (first.ChildNodes[0].Name == "br" || first.ChildNodes[0].InnerText.Contains('['))
         {
             if (first.ChildNodes[0].InnerText.Contains('['))
