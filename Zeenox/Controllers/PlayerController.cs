@@ -78,7 +78,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
             return Forbid();
         }
         
-        var result = await audioService.Tracks.LoadTracksAsync(url, new TrackLoadOptions { SearchMode = TrackSearchMode.None, StrictSearch = true }).ConfigureAwait(false);
+        var result = await audioService.Tracks.LoadTracksAsync(url, new TrackLoadOptions(TrackSearchMode.None, StrictSearchBehavior.Throw)).ConfigureAwait(false);
         if (!result.IsSuccess)
         {
             return NotFound();
@@ -108,7 +108,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
             return Forbid();
         }
         
-        var track = await audioService.Tracks.LoadTrackAsync(url, new TrackLoadOptions { SearchMode = TrackSearchMode.None, StrictSearch = true }).ConfigureAwait(false);
+        var track = await audioService.Tracks.LoadTrackAsync(url, new TrackLoadOptions(TrackSearchMode.None, StrictSearchBehavior.Throw)).ConfigureAwait(false);
         if (track is null)
         {
             return NotFound();

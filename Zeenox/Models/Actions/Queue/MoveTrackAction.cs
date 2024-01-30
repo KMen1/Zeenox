@@ -14,6 +14,6 @@ public class MoveTrackAction(IUser user, int from, int to, ExtendedTrackItem tra
     
     public override string Stringify()
     {
-        return $"moved {trackItem.Title} from #{from + 1} to #{to + 1}";
+        return $"moved {trackItem.Title} from #{From + 1} to #{To + 1}";
     }
 }

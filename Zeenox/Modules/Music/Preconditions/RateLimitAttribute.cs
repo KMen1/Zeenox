@@ -8,7 +8,6 @@
 using System.Collections.Concurrent;
 using Discord;
 using Discord.Interactions;
-using Discord.WebSocket;
 
 // ReSharper disable PossibleMultipleEnumeration
 
@@ -18,22 +17,15 @@ public class RateLimit : PreconditionAttribute
 {
     public static ConcurrentDictionary<ulong, List<RateLimitItem>> Items = new();
     private static DateTime _removeExpiredCommandsTime = DateTime.MinValue;
-    private readonly RateLimitType? _context;
-    private readonly RateLimitBaseType _baseType;
+    private readonly RateLimitType _context;
     private readonly int _requests;
     private readonly int _seconds;
 
-    public RateLimit(
-        int seconds = 4,
-        int requests = 1,
-        RateLimitType context = RateLimitType.User,
-        RateLimitBaseType baseType = RateLimitBaseType.BaseOnCommandInfo
-    )
+    public RateLimit(int seconds = 4, int requests = 1, RateLimitType context = RateLimitType.User)
     {
         _context = context;
         _requests = requests;
         _seconds = seconds;
-        _baseType = baseType;
     }
 
     public override Task<PreconditionResult> CheckRequirementsAsync(
@@ -52,7 +44,7 @@ public class RateLimit : PreconditionAttribute
             });
         }
 
-        ulong id = _context.Value switch
+        ulong id = _context switch
         {
             RateLimitType.User => context.User.Id,
             RateLimitType.Channel => context.Channel.Id,
@@ -61,25 +53,8 @@ public class RateLimit : PreconditionAttribute
             _ => 0
         };
 
-        var contextId = _baseType switch
-        {
-            RateLimitBaseType.BaseOnCommandInfo
-                => commandInfo.Module.Name
-                    + "//"
-                    + commandInfo.Name
-                    + "//"
-                    + commandInfo.MethodName,
-            RateLimitBaseType.BaseOnCommandInfoHashCode => commandInfo.GetHashCode().ToString(),
-            RateLimitBaseType.BaseOnSlashCommandName
-                => (context.Interaction as SocketSlashCommand).CommandName,
-            RateLimitBaseType.BaseOnMessageComponentCustomId
-                => (context.Interaction as SocketMessageComponent).Data.CustomId,
-            RateLimitBaseType.BaseOnAutocompleteCommandName
-                => (context.Interaction as SocketAutocompleteInteraction).Data.CommandName,
-            RateLimitBaseType.BaseOnApplicationCommandName
-                => (context.Interaction as SocketApplicationCommand).Name,
-            _ => "unknown"
-        };
+        var contextId =
+            commandInfo.Module.Name + "//" + commandInfo.Name + "//" + commandInfo.MethodName;
 
         var dateTime = DateTime.UtcNow;
 
@@ -134,15 +109,5 @@ public class RateLimit : PreconditionAttribute
         Channel,
         Guild,
         Global
-    }
-
-    public enum RateLimitBaseType
-    {
-        BaseOnCommandInfo,
-        BaseOnCommandInfoHashCode,
-        BaseOnSlashCommandName,
-        BaseOnMessageComponentCustomId,
-        BaseOnAutocompleteCommandName,
-        BaseOnApplicationCommandName
     }
 }

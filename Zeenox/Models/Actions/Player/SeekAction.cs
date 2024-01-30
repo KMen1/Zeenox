@@ -9,6 +9,6 @@ public class SeekAction(IUser user, int position) : Action(user, ActionType.Seek
     
     public override string Stringify()
     {
-        return $"seeked to {TimeSpan.FromSeconds(position).ToString()}";
+        return $"seeked to {TimeSpan.FromSeconds(Position).ToString()}";
     }
 }

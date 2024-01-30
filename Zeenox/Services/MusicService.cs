@@ -2,6 +2,7 @@
 using Discord;
 using Discord.WebSocket;
 using HtmlAgilityPack;
+using HtmlAgilityPack.CssSelectors.NetCore;
 using Lavalink4NET;
 using Lavalink4NET.Clients;
 using Lavalink4NET.InactivityTracking;

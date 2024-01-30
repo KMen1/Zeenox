@@ -17,7 +17,7 @@ public class RequireSongRequesterAttribute : PreconditionAttribute
 
         if (
             player is not null
-            && player.CurrentItem?.RequestedBy.Id != context.User.Id
+            && player.CurrentItem?.RequestedBy?.Id != context.User.Id
         )
         {
             return PreconditionResult.FromError(

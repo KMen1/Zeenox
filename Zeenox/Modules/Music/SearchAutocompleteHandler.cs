@@ -23,7 +23,7 @@ public class SearchAutocompleteHandler(IAudioService audioService) : Autocomplet
         var results = await audioService.Tracks
             .LoadTracksAsync(
                 query,
-                new TrackLoadOptions { SearchMode = TrackSearchMode.Spotify, StrictSearch = true }
+                new TrackLoadOptions(TrackSearchMode.Spotify, StrictSearchBehavior.Throw)
             )
             .ConfigureAwait(false);
 

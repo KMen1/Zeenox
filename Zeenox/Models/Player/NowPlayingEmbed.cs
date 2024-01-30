@@ -18,9 +18,9 @@ public class NowPlayingEmbed : EmbedBuilder
         Color = new Color(31, 31, 31);
         ImageUrl = trackItem.AlbumImageUrl;
         Footer = new EmbedFooterBuilder()
-            .WithIconUrl(trackItem.RequestedBy.GetAvatarUrl())
+            .WithIconUrl(trackItem.RequestedBy?.GetAvatarUrl())
             .WithText(
-                $"Added by {trackItem.RequestedBy.Username} | Length: {track.Duration.ToTimeString()} | Volume: {Math.Round(volume * 200)}%"
+                $"Added by {trackItem.RequestedBy?.Username} | Length: {track.Duration.ToTimeString()} | Volume: {Math.Round(volume * 200)}%"
             );
         if (queue.Count <= 0)
             return;
