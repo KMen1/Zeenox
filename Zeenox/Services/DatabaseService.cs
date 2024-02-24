@@ -9,7 +9,7 @@ public sealed class DatabaseService
 {
     private readonly IMemoryCache _cache;
     private readonly IMongoCollection<GuildConfig> _configs;
-    private readonly IMongoCollection<PlayerResumeSession> _resumeSessions;
+    private readonly IMongoCollection<ResumeSession> _resumeSessions;
 
     public DatabaseService(IMongoClient mongoClient, IConfiguration config, IMemoryCache cache)
     {
@@ -21,7 +21,7 @@ public sealed class DatabaseService
             config["MongoDB:ConfigCollection"]
                 ?? throw new Exception("MongoDB config collection name is not set!")
         );
-        _resumeSessions = database.GetCollection<PlayerResumeSession>(
+        _resumeSessions = database.GetCollection<ResumeSession>(
             config["MongoDB:ResumeSessionCollection"]
                 ?? throw new Exception("MongoDB resume session collection name is not set!")
         );
@@ -59,7 +59,7 @@ public sealed class DatabaseService
         Log.Logger.Information("Updated config for guild with id: {GuildId}", guildId);
     }
 
-    public async Task SaveResumeSessionAsync(PlayerResumeSession session)
+    public async Task SaveResumeSessionAsync(ResumeSession session)
     {
         await _resumeSessions
             .ReplaceOneAsync(
@@ -74,7 +74,7 @@ public sealed class DatabaseService
         );
     }
 
-    public async Task<PlayerResumeSession?> GetResumeSessionAsync(ulong guildId)
+    public async Task<ResumeSession?> GetResumeSessionAsync(ulong guildId)
     {
         var cursor = await _resumeSessions
             .FindAsync(x => x.GuildId == guildId)
@@ -93,7 +93,7 @@ public sealed class DatabaseService
         Log.Logger.Information("Deleted resume session for guild with id: {GuildId}", guildId);
     }
 
-    public async Task<IEnumerable<PlayerResumeSession>> GetResumeSessionsAsync(
+    public async Task<IEnumerable<ResumeSession>> GetResumeSessionsAsync(
         params ulong[] guildId
     )
     {

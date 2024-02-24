@@ -5,8 +5,7 @@ using Discord.WebSocket;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
-using Zeenox.Models;
-using Zeenox.Models.Socket;
+using Zeenox.Dtos;
 using Zeenox.Services;
 
 namespace Zeenox.Controllers;
@@ -17,30 +16,39 @@ namespace Zeenox.Controllers;
 [ProducesResponseType(StatusCodes.Status401Unauthorized)]
 [Route("api/v{version:apiVersion}/[controller]")]
 [ApiVersion("1.0")]
-public class GuildsController(DiscordSocketClient client, DatabaseService databaseService) : ControllerBase
+public class GuildsController(DiscordSocketClient client, DatabaseService databaseService, MusicService musicService) : ControllerBase
 {
     [Route("available")]
     [HttpGet]
-    public async Task<IActionResult> GetAvailableGuilds(bool includeResumeSessions = false)
+    public async Task<IActionResult> GetAvailableGuilds()
     {
         var identity = HttpContext.User.Identity as ClaimsIdentity;
-        var userId = identity!.GetUserId();
+        if (!identity.TryGetUserId(out var userId))
+        {
+            return BadRequest();
+        }
 
         var guilds = client.Guilds.Where(
             x =>
-                x.Users.Select(y => y.Id).Contains(userId!.Value)
+                x.Users.Select(y => y.Id).Contains(userId.Value)
             //&& x.Users.First(z => z.Id == userId).GuildPermissions.ManageGuild
         ).ToList();
 
-        if (!includeResumeSessions)
+
+
+        var guildsList = new List<SocketGuildDTO>();
+
+        foreach (var guild in guilds)
         {
-            var guildsList = guilds.Select(x => new BasicDiscordGuild(x, null));
-            return Content(JsonConvert.SerializeObject(guildsList));
+            var voiceChannel = guild.VoiceChannels.FirstOrDefault(x => x.ConnectedUsers.Any(y => y.Id == client.CurrentUser.Id));
+            var resumeSession = await databaseService.GetResumeSessionAsync(guild.Id).ConfigureAwait(false);
+            var player = await musicService.TryGetPlayerAsync(guild.Id).ConfigureAwait(false);
+            var trackDto = player?.CurrentItem is not null ? new TrackDTO(player.CurrentItem) : null;
+            var resumeSessionDto = resumeSession is not null ? new ResumeSessionDTO(resumeSession, client) : null;
+            guildsList.Add(new SocketGuildDTO(guild, trackDto, voiceChannel?.Name, resumeSessionDto));
         }
-        
-        var resumeSessions = await databaseService.GetResumeSessionsAsync(guilds.Select(x => x.Id).ToArray()).ConfigureAwait(false);
-        var guildsListWithResumeSessions = guilds.Select(x => new BasicDiscordGuild(x, PlayerResumeSessionDto.Create(resumeSessions.FirstOrDefault(y => y.GuildId == x.Id), client)));
-        return Content(JsonConvert.SerializeObject(guildsListWithResumeSessions));
+
+        return Content(JsonConvert.SerializeObject(guildsList));
     }
 
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -54,7 +62,10 @@ public class GuildsController(DiscordSocketClient client, DatabaseService databa
         }
 
         var resumeSession = await databaseService.GetResumeSessionAsync(id).ConfigureAwait(false);
-        var resumeSessionDto = resumeSession is null ? null : new PlayerResumeSessionDto(resumeSession, client);
-        return Ok(JsonConvert.SerializeObject(new BasicDiscordGuild(guild, resumeSessionDto)));
+        var voiceChannel = guild.VoiceChannels.FirstOrDefault(x => x.ConnectedUsers.Any(y => y.Id == client.CurrentUser.Id));
+        var resumeSessionDto = resumeSession is null ? null : new ResumeSessionDTO(resumeSession, client);
+        var player = await musicService.TryGetPlayerAsync(guild.Id).ConfigureAwait(false);
+        var trackDto = player?.CurrentItem is not null ? new TrackDTO(player.CurrentItem) : null;
+        return Ok(JsonConvert.SerializeObject(new SocketGuildDTO(guild, trackDto, voiceChannel?.Name, resumeSessionDto)));
     }
 }

@@ -6,6 +6,7 @@ using Lavalink4NET.Clients;
 using Lavalink4NET.Players;
 using Lavalink4NET.Players.Preconditions;
 using Microsoft.Extensions.Options;
+using SpotifyAPI.Web;
 using Zeenox.Players;
 using Zeenox.Services;
 
@@ -16,8 +17,9 @@ public class MusicBase : ModuleBase
     public IAudioService AudioService { get; set; } = null!;
     public MusicService MusicService { get; set; } = null!;
     public DatabaseService DatabaseService { get; set; } = null!;
+    public SpotifyClient SpotifyClient { get; set; } = null!;
 
-    protected async ValueTask<LoggedPlayer?> TryGetPlayerAsync(
+    protected async ValueTask<SocketPlayer?> TryGetPlayerAsync(
         bool allowConnect = false,
         bool requireChannel = true,
         ImmutableArray<IPlayerPrecondition> preconditions = default,
@@ -27,7 +29,10 @@ public class MusicBase : ModuleBase
     {
         cancellationToken.ThrowIfCancellationRequested();
         var voiceState = Context.User as IVoiceState;
-        var factory = new PlayerFactory<LoggedPlayer, InteractivePlayerOptions>(
+        var resumeSession = await DatabaseService
+            .GetResumeSessionAsync(Context.Guild.Id)
+            .ConfigureAwait(false);
+        var factory = new PlayerFactory<SocketPlayer, SocketPlayerOptions>(
             (properties, _) =>
             {
                 properties.Options.Value.TextChannel = (ITextChannel)Context.Channel;
@@ -35,7 +40,11 @@ public class MusicBase : ModuleBase
                     voiceState!.VoiceChannel as SocketVoiceChannel
                 )!;
                 properties.Options.Value.DbService = DatabaseService;
-                return ValueTask.FromResult(new LoggedPlayer(properties));
+                properties.Options.Value.ResumeSession = resumeSession;
+                properties.Options.Value.DiscordClient = Context.Client;
+                properties.Options.Value.AudioService = AudioService;
+                properties.Options.Value.SpotifyClient = SpotifyClient;
+                return ValueTask.FromResult(new SocketPlayer(properties));
             }
         );
 
@@ -56,8 +65,8 @@ public class MusicBase : ModuleBase
                 Context.Guild.Id,
                 voiceState!.VoiceChannel?.Id,
                 playerFactory: factory,
-                options: new OptionsWrapper<InteractivePlayerOptions>(
-                    new InteractivePlayerOptions
+                options: new OptionsWrapper<SocketPlayerOptions>(
+                    new SocketPlayerOptions
                     {
                         SelfDeaf = true,
                         InitialVolume =
@@ -91,7 +100,7 @@ public class MusicBase : ModuleBase
         return null;
     }
 
-    private static Embed CreateErrorEmbed(PlayerResult<LoggedPlayer> result)
+    private static Embed CreateErrorEmbed(PlayerResult<SocketPlayer> result)
     {
         var title = result.Status switch
         {

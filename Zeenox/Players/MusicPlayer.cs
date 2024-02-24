@@ -1,15 +1,23 @@
-﻿using Lavalink4NET.Players;
+﻿using Lavalink4NET;
+using Lavalink4NET.Players;
 using Lavalink4NET.Players.Queued;
 using Lavalink4NET.Players.Vote;
+using Lavalink4NET.Protocol.Payloads.Events;
+using Lavalink4NET.Rest.Entities.Tracks;
+using Lavalink4NET.Tracks;
+using SpotifyAPI.Web;
 using Zeenox.Models.Player;
 
 namespace Zeenox.Players;
 
-public abstract class MusicPlayer(IPlayerProperties<MusicPlayer, VoteLavalinkPlayerOptions> properties)
+public abstract class MusicPlayer(IPlayerProperties<MusicPlayer, MusicPlayerOptions> properties)
     : VoteLavalinkPlayer(properties)
 {
     public new ExtendedTrackItem? CurrentItem => (ExtendedTrackItem?)base.CurrentItem;
     public DateTimeOffset StartedAt { get; } = properties.SystemClock.UtcNow;
+    public bool IsAutoPlayEnabled { get; private set; } = true;
+    private SpotifyClient SpotifyClient => properties.Options.Value.SpotifyClient;
+    private IAudioService AudioService => properties.Options.Value.AudioService;
 
     protected virtual async Task<int> PlayAsync(IEnumerable<ExtendedTrackItem> tracksEnumerable)
     {
@@ -50,6 +58,12 @@ public abstract class MusicPlayer(IPlayerProperties<MusicPlayer, VoteLavalinkPla
     protected virtual Task SetRepeatModeAsync(TrackRepeatMode repeatMode)
     {
         RepeatMode = repeatMode;
+        return Task.CompletedTask;
+    }
+    
+    protected virtual Task ToggleAutoPlayAsync()
+    {
+        IsAutoPlayEnabled = !IsAutoPlayEnabled;
         return Task.CompletedTask;
     }
 
@@ -131,5 +145,42 @@ public abstract class MusicPlayer(IPlayerProperties<MusicPlayer, VoteLavalinkPla
         await Queue.RemoveAtAsync(from).ConfigureAwait(false);
         await Queue.InsertAsync(to, track).ConfigureAwait(false);
         return true;
+    }
+
+    protected override async ValueTask NotifyTrackEndedAsync(ITrackQueueItem queueItem, TrackEndReason endReason,
+        CancellationToken cancellationToken = new ())
+    {
+        await base.NotifyTrackEndedAsync(queueItem, endReason, cancellationToken).ConfigureAwait(false);
+        
+        if (IsAutoPlayEnabled && Queue.Count < 2)
+        {
+            var recommendedTracks = await GetRecommendedTrackAsync(Queue, queueItem, CurrentItem is null ? 3 : 2 - Queue.Count).ConfigureAwait(false);
+            await PlayAsync(recommendedTracks.Select(x => new ExtendedTrackItem(x, null))).ConfigureAwait(false);
+        }
+    }
+
+    private async Task<List<LavalinkTrack>> GetRecommendedTrackAsync(ITrackQueue queue, ITrackQueueItem? currentTrack, int limit = 2)
+    {
+        var tracks = queue.History?.Take(5).ToList() ?? [];
+        if (currentTrack is not null)
+            tracks.Add(currentTrack);
+        if (tracks.Count > 5)
+            tracks.RemoveAt(tracks.Count - 1);
+        
+        var trackIds = tracks.Select(x => x.Identifier);
+        var recommendationsRequest = new RecommendationsRequest();
+        ((List<string>)recommendationsRequest.SeedTracks).AddRange(trackIds);
+        var recommendationsResponse = await SpotifyClient.Browse.GetRecommendations(recommendationsRequest).ConfigureAwait(false);
+        var orderedTracks = recommendationsResponse.Tracks.OrderBy(x => x.Popularity).Reverse().ToList();
+        
+        var recommendedTracks = new List<LavalinkTrack>();
+        for (var i = 0; i < limit; i++)
+        {
+            var url = orderedTracks.Skip(i).First(x => Queue.All(y => y.Identifier != x.Id)).ExternalUrls["spotify"];
+            var track = await AudioService.Tracks.LoadTrackAsync(url, new TrackLoadOptions { SearchMode = TrackSearchMode.None}).ConfigureAwait(false);
+            recommendedTracks.Add(track!);
+        }
+        
+        return recommendedTracks;
     }
 }

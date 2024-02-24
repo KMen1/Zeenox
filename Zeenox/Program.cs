@@ -1,4 +1,5 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using Asp.Versioning;
 using Discord;
 using Discord.Addons.Hosting;
@@ -8,34 +9,39 @@ using Fergun.Interactive;
 using Lavalink4NET.Extensions;
 using Lavalink4NET.InactivityTracking;
 using Lavalink4NET.InactivityTracking.Extensions;
-using Lavalink4NET.Lyrics.Extensions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using Serilog;
 using Serilog.Events;
+using SpotifyAPI.Web;
 using Zeenox;
 using Zeenox.Services;
-
-Log.Logger = new LoggerConfiguration().Enrich
-    .FromLogContext()
-    .MinimumLevel.Information()
-    .MinimumLevel.Override("Microsoft.Extensions.Http", LogEventLevel.Warning)
-    .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
-    .WriteTo.Console()
-    .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);
 var config = builder.Configuration;
 
-builder.Host.UseSerilog();
+builder.Host.UseSerilog(
+    (_, configuration) =>
+    {
+        configuration.Enrich
+            .FromLogContext()
+            .MinimumLevel.Information()
+            .MinimumLevel.Override("Microsoft.Extensions.Http", LogEventLevel.Warning)
+            .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+            .MinimumLevel.Override("System.Net.Http.HttpClient", LogEventLevel.Warning)
+            .WriteTo.Console();
+    },
+    preserveStaticLogger: true
+);
 
 builder.Services.AddDiscordHost(
     (socketConfig, _) =>
     {
         socketConfig.SocketConfig = new DiscordSocketConfig
         {
-            LogLevel = LogSeverity.Verbose,
+            LogLevel = LogSeverity.Info,
             AlwaysDownloadUsers = true,
             MessageCacheSize = 200,
             GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.GuildMembers,
@@ -52,7 +58,7 @@ builder.Services.AddInteractionService(
     (interactionConfig, _) =>
     {
         interactionConfig.DefaultRunMode = RunMode.Async;
-        interactionConfig.LogLevel = LogSeverity.Verbose;
+        interactionConfig.LogLevel = LogSeverity.Info;
         interactionConfig.UseCompiledLambda = true;
         interactionConfig.LocalizationManager = new JsonLocalizationManager("/", "CommandLocale");
     }
@@ -75,7 +81,6 @@ builder.Services
         x.DefaultTimeout = TimeSpan.FromMinutes(3);
         x.TrackingMode = InactivityTrackingMode.Any;
     })
-    .AddLyrics()
     .AddSingleton<IMongoClient>(
         new MongoClient(
             config["MongoDB:ConnectionString"]
@@ -87,7 +92,38 @@ builder.Services
     .AddSingleton<DatabaseService>()
     .AddSingleton<MusicService>()
     .AddMemoryCache()
-    .AddHttpClient();
+    .AddHttpClient()
+    .AddSingleton(
+        new SpotifyClient(
+            SpotifyClientConfig
+                .CreateDefault()
+                .WithAuthenticator(
+                    new ClientCredentialsAuthenticator(
+                        config["Spotify:ClientId"]
+                            ?? throw new Exception("Spotify client ID is not set!"),
+                        config["Spotify:ClientSecret"]
+                            ?? throw new Exception("Spotify client secret is not set!")
+                    )
+                )
+        )
+    )
+    .AddLogging(x => x.AddSerilog())
+    .AddRateLimiter(x =>
+    {
+        x.AddTokenBucketLimiter(
+            "global",
+            y =>
+            {
+                y.TokenLimit = 6;
+                y.TokensPerPeriod = 2;
+                y.ReplenishmentPeriod = TimeSpan.FromSeconds(2);
+                y.QueueProcessingOrder = QueueProcessingOrder.NewestFirst;
+                y.QueueLimit = 0;
+                y.AutoReplenishment = true;
+            }
+        );
+        x.RejectionStatusCode = 429;
+    });
 
 builder.Services
     .AddAuthentication(x =>
@@ -158,6 +194,8 @@ app.UseAuthorization();
 app.UseWebSockets();
 
 app.UseMiddleware<ErrorHandlingMiddleware>();
+
+app.UseRateLimiter();
 
 app.MapControllers();
 

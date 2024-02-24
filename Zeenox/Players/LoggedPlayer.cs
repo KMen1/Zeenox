@@ -1,31 +1,26 @@
 ﻿using Discord;
-using Discord.WebSocket;
 using Lavalink4NET.Players;
 using Lavalink4NET.Players.Queued;
 using Lavalink4NET.Rest.Entities.Tracks;
-using Lavalink4NET.Tracks;
 using Zeenox.Enums;
-using Zeenox.Models;
 using Zeenox.Models.Actions.Player;
 using Zeenox.Models.Actions.Queue;
 using Zeenox.Models.Player;
-using Zeenox.Services;
 using Action = Zeenox.Models.Actions.Action;
 using ActionType = Zeenox.Enums.ActionType;
 
 namespace Zeenox.Players;
 
-public sealed class LoggedPlayer
-    (IPlayerProperties<LoggedPlayer, InteractivePlayerOptions> properties) : SocketPlayer(properties)
+public class LoggedPlayer
+    (IPlayerProperties<LoggedPlayer, EmbedPlayerOptions> properties) : EmbedPlayer(properties)
 {
-    public List<Action> Actions { get; } = [];
+    private List<Action> Actions { get; } = [];
     public ExtendedTrackItem? LastCurrentItem { get; private set; }
-    private DatabaseService DbService { get; } = properties.Options.Value.DbService;
 
-    private Task AddActionAsync(Action action)
+    protected virtual Task AddActionAsync(Action action)
     {
         Actions.Add(action);
-        return UpdateSocketsAsync(updateActions: true);
+        return Task.CompletedTask;
     }
     
     public object GetActionsForSerialization()
@@ -43,7 +38,7 @@ public sealed class LoggedPlayer
         return Actions.Select(action => action.StringifyFull());
     }
 
-    public async Task<int> PlayAsync(IUser user, IEnumerable<ExtendedTrackItem> tracksEnumerable)
+    public virtual async Task<int> PlayAsync(IUser user, IEnumerable<ExtendedTrackItem> tracksEnumerable)
     {
         var tracks = tracksEnumerable.ToList();
         await AddActionAsync(new EnqueuePlaylistAction(user, null, tracks)).ConfigureAwait(false);
@@ -51,7 +46,7 @@ public sealed class LoggedPlayer
         return result;
     }
     
-    public async Task<int> PlayAsync(IUser user, TrackLoadResult trackLoadResult)
+    public virtual async Task<int> PlayAsync(IUser user, TrackLoadResult trackLoadResult)
     {
         var tracks = trackLoadResult.Tracks.Select(x => new ExtendedTrackItem(x, user)).ToList();
         await AddActionAsync(new EnqueuePlaylistAction(user, trackLoadResult.Playlist, tracks)).ConfigureAwait(false);
@@ -59,7 +54,7 @@ public sealed class LoggedPlayer
         return result;
     }
 
-    public async ValueTask<int> PlayAsync(IUser user, ExtendedTrackItem trackItem, bool enqueue = true)
+    public virtual async ValueTask<int> PlayAsync(IUser user, ExtendedTrackItem trackItem, bool enqueue = true)
     {
         var result = await base.PlayAsync(trackItem, enqueue).ConfigureAwait(false);
         if (result > 0)
@@ -69,45 +64,51 @@ public sealed class LoggedPlayer
         return result;
     }
     
-    public async ValueTask ResumeAsync(IUser user)
+    public virtual async ValueTask ResumeAsync(IUser user)
     {
         await base.ResumeAsync(CancellationToken.None).ConfigureAwait(false);
         await AddActionAsync(new ResumeAction(user)).ConfigureAwait(false);
     }
 
-    public async ValueTask PauseAsync(IUser user)
+    public virtual async ValueTask PauseAsync(IUser user)
     {
         await base.PauseAsync(CancellationToken.None).ConfigureAwait(false);
         await AddActionAsync(new PauseAction(user)).ConfigureAwait(false);
     }
 
-    public async Task SetRepeatModeAsync(IUser user, TrackRepeatMode repeatMode)
+    public virtual async Task SetRepeatModeAsync(IUser user, TrackRepeatMode repeatMode)
     {
         await base.SetRepeatModeAsync(repeatMode).ConfigureAwait(false);
         await AddActionAsync(new RepeatAction(user, repeatMode)).ConfigureAwait(false);
     }
 
-    public async Task CycleRepeatModeAsync(IUser user)
+    public virtual async Task CycleRepeatModeAsync(IUser user)
     {
         await base.CycleRepeatModeAsync().ConfigureAwait(false);
         await AddActionAsync(new RepeatAction(user, RepeatMode)).ConfigureAwait(false);
     }
 
-    public async ValueTask<int> ClearQueueAsync(IUser user)
+    public virtual async Task ToggleAutoPlayAsync(IUser user)
+    {
+        await base.ToggleAutoPlayAsync().ConfigureAwait(false);
+        await AddActionAsync(new ToggleAutoPlayAction(user, IsAutoPlayEnabled)).ConfigureAwait(false);
+    }
+
+    public virtual async ValueTask<int> ClearQueueAsync(IUser user)
     {
         var result = await base.ClearQueueAsync().ConfigureAwait(false);
         await AddActionAsync(new QueueAction(user, QueueActionType.Clear)).ConfigureAwait(false);
         return result;
     }
 
-    public async ValueTask<int> DistinctQueueAsync(IUser user)
+    public virtual async ValueTask<int> DistinctQueueAsync(IUser user)
     {
         var result = await base.DistinctQueueAsync().ConfigureAwait(false);
         await AddActionAsync(new QueueAction(user, QueueActionType.Distinct)).ConfigureAwait(false);
         return result;
     }
 
-    public async Task ReverseQueueAsync(IUser user)
+    public virtual async Task ReverseQueueAsync(IUser user)
     {
         await base.ReverseQueueAsync().ConfigureAwait(false);
         await AddActionAsync(new QueueAction(user, QueueActionType.Reverse)).ConfigureAwait(false);
@@ -121,14 +122,14 @@ public sealed class LoggedPlayer
         await base.SkipAsync().ConfigureAwait(false);
     }
 
-    public async Task RewindAsync(IUser user)
+    public virtual async Task RewindAsync(IUser user)
     {
         var result = await base.RewindAsync().ConfigureAwait(false);
         if (result is not null)
             await AddActionAsync(new RewindAction(user, result)).ConfigureAwait(false);
     }
 
-    public async ValueTask SeekAsync(IUser user, int position)
+    public virtual async ValueTask SeekAsync(IUser user, int position)
     {
         await base.SeekAsync(position).ConfigureAwait(false);
         await AddActionAsync(new SeekAction(user, position)).ConfigureAwait(false);
@@ -143,7 +144,7 @@ public sealed class LoggedPlayer
         return result;
     }
 
-    public async ValueTask<bool> RemoveAsync(IUser user, int index)
+    public virtual async ValueTask<bool> RemoveAsync(IUser user, int index)
     {
         var track = Queue.ElementAtOrDefault(index) as ExtendedTrackItem;
         var result = await base.RemoveAtAsync(index).ConfigureAwait(false);
@@ -152,13 +153,13 @@ public sealed class LoggedPlayer
         return result;
     }
 
-    public async ValueTask ShuffleAsync(IUser user)
+    public virtual async ValueTask ShuffleAsync(IUser user)
     {
         await base.ShuffleAsync().ConfigureAwait(false);
         await AddActionAsync(new QueueAction(user, QueueActionType.Shuffle)).ConfigureAwait(false);
     }
 
-    public async ValueTask<bool> MoveTrackAsync(IUser user, int from, int to)
+    public virtual async ValueTask<bool> MoveTrackAsync(IUser user, int from, int to)
     {
         var track = Queue.ElementAtOrDefault(from) as ExtendedTrackItem;
         var result = await base.MoveTrackAsync(from, to).ConfigureAwait(false);
@@ -167,7 +168,7 @@ public sealed class LoggedPlayer
         return result;
     }
 
-    public async ValueTask<bool> RemoveAtAsync(IUser user, int index)
+    public virtual async ValueTask<bool> RemoveAtAsync(IUser user, int index)
     {
         var track = Queue.ElementAtOrDefault(index) as ExtendedTrackItem;
         var result = await base.RemoveAtAsync(index).ConfigureAwait(false);
@@ -176,7 +177,7 @@ public sealed class LoggedPlayer
         return result;
     }
 
-    public async ValueTask SetVolumeAsync(
+    public virtual async ValueTask SetVolumeAsync(
         IUser user,
         int volume
     )
@@ -186,37 +187,10 @@ public sealed class LoggedPlayer
         await AddActionAsync(new VolumeAction(user, volume, prevVolume > volume ? ActionType.VolumeDown : ActionType.VolumeUp)).ConfigureAwait(false);
     }
 
-    public async ValueTask StopAsync(IUser user)
+    public virtual async ValueTask StopAsync(IUser user)
     {
         LastCurrentItem = CurrentItem;
         await base.StopAsync().ConfigureAwait(false);
         await AddActionAsync(new StopAction(user)).ConfigureAwait(false);
-    }
-    
-    public async Task ResumeSessionAsync(IUser user, DiscordSocketClient client)
-    {
-        var resumeSession = await DbService.GetResumeSessionAsync(GuildId).ConfigureAwait(false);
-        if (resumeSession is null)
-            return;
-        var track = new ExtendedTrackItem(LavalinkTrack.Parse(resumeSession.CurrentTrack.Id, null), client.GetUser(resumeSession.CurrentTrack.RequesterId));
-        var queue = resumeSession.Queue.Select(x => new ExtendedTrackItem(LavalinkTrack.Parse(x.Id, null), client.GetUser(x.RequesterId))).ToList();
-
-        if (queue.Count > 0)
-        {
-            await Queue.AddRangeAsync(queue).ConfigureAwait(false);
-            await AddActionAsync(new EnqueuePlaylistAction(user, null, queue)).ConfigureAwait(false);
-        }
-        await PlayAsync(user, track, false).ConfigureAwait(false);
-        await DbService.DeleteResumeSessionAsync(GuildId).ConfigureAwait(false);
-    }
-
-    protected override async ValueTask DisposeAsyncCore()
-    {
-        if (Queue.Count > 0)
-        {
-            var resumeSession = new PlayerResumeSession(this);
-            await DbService.SaveResumeSessionAsync(resumeSession).ConfigureAwait(false);
-        }
-        await base.DisposeAsyncCore().ConfigureAwait(false);
     }
 }

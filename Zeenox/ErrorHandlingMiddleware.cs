@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Text.Json;
+using Serilog;
 
 namespace Zeenox;
 
@@ -13,6 +14,7 @@ public class ErrorHandlingMiddleware(RequestDelegate next)
         }
         catch (Exception error)
         {
+            Log.Logger.Error(error, "An error occurred");
             var response = context.Response;
             if (response.StatusCode == (int)HttpStatusCode.SwitchingProtocols)
             {

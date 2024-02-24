@@ -7,6 +7,6 @@ public class GuildConfig(ulong guildId)
 {
     [BsonId] public ulong GuildId { get; set; } = guildId;
 
-    public Langcode Language { get; set; } = Langcode.ENG;
+    public Language Language { get; set; } = Language.English;
     public MusicSettings MusicSettings { get; set; } = new();
 }

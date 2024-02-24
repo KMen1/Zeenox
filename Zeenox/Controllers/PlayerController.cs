@@ -1,4 +1,5 @@
-﻿using System.Security.Claims;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Security.Claims;
 using Asp.Versioning;
 using Discord;
 using Discord.WebSocket;
@@ -6,12 +7,14 @@ using Lavalink4NET;
 using Lavalink4NET.Rest.Entities.Tracks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Zeenox.Models.Player;
 using Zeenox.Players;
 using Zeenox.Services;
 
 namespace Zeenox.Controllers;
 
+[EnableRateLimiting("global")]
 [Authorize]
 [ApiController]
 [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -19,24 +22,14 @@ namespace Zeenox.Controllers;
 [ApiVersion("1.0")]
 public class PlayerController(MusicService musicService, DiscordSocketClient client, IAudioService audioService, DatabaseService dbService) : ControllerBase
 {
-    private async Task<(IUser, LoggedPlayer?)> GetPlayerAndUserAsync()
-    {
-        var identity = HttpContext.User.Identity as ClaimsIdentity;
-        var guildId = identity?.GetGuildId();
-        var userId = identity?.GetUserId();
-
-        var player = await musicService.TryGetPlayerAsync(guildId.GetValueOrDefault()).ConfigureAwait(false);
-        return (client.GetUser(userId!.Value), player);
-    }
-    
     [Route("lyrics")]
     [HttpGet]
     public async Task<IActionResult> GetLyrics()
     {
         var identity = HttpContext.User.Identity as ClaimsIdentity;
-        var guildId = ulong.Parse(identity!.FindFirst("GUILD_ID")!.Value);
+        if (!identity.TryGetGuildId(out var guildId)) return BadRequest();
 
-        var lyrics = await musicService.GetLyricsAsync(guildId).ConfigureAwait(false);
+        var lyrics = await musicService.GetLyricsAsync(guildId.Value).ConfigureAwait(false);
         return lyrics is null ? NotFound() : Ok(lyrics);
     }
 
@@ -45,22 +38,31 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
     public async Task<IActionResult> ResumeSession()
     {
         var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
-        if (player is null)
+        if (!IsAllowedToPerform(player, user, out var result)) return result;
+
+        if (!player.HasResumeSession)
         {
-            return NotFound();
-        }
-        if (!player.IsUserListening(user))
-        {
-            return Forbid();
+            return BadRequest();
         }
         
-        var resumeSession = await dbService.GetResumeSessionAsync(player.GuildId).ConfigureAwait(false);
-        if (resumeSession is null)
+        await player.ResumeSessionAsync(user).ConfigureAwait(false);
+        return Ok();
+    }
+    
+    [Route("resumesession")]
+    [HttpDelete]
+    public async Task<IActionResult> DeleteResumeSession()
+    {
+        var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
+        if (!IsAllowedToPerform(player, user, out var result)) return result;
+
+        if (!player.HasResumeSession)
         {
-            throw new Exception("Resume session is null");
+            return BadRequest();
         }
 
-        await player.ResumeSessionAsync(user, client).ConfigureAwait(false);
+        await dbService.DeleteResumeSessionAsync(player.GuildId).ConfigureAwait(false);
+        player.RemoveResumeSession();
         return Ok();
     }
     
@@ -69,28 +71,23 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
     public async Task<IActionResult> Play([FromQuery] string url)
     {
         var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
-        if (player is null)
-        {
-            return NotFound();
-        }
-        if (!player.IsUserListening(user))
-        {
-            return Forbid();
-        }
+        if (!IsAllowedToPerform(player, user, out var result)) return result;
         
-        var result = await audioService.Tracks.LoadTracksAsync(url, new TrackLoadOptions(TrackSearchMode.None, StrictSearchBehavior.Throw)).ConfigureAwait(false);
-        if (!result.IsSuccess)
+        var searchResult = await audioService.Tracks.LoadTracksAsync(url, new TrackLoadOptions(TrackSearchMode.None, StrictSearchBehavior.Throw)).ConfigureAwait(false);
+        if (!searchResult.IsSuccess)
         {
             return NotFound();
         }
 
-        if (result.IsPlaylist)
+        if (searchResult.IsPlaylist)
         {
-            await player.PlayAsync(user, result).ConfigureAwait(false);
-            return Ok();
+            await player.PlayAsync(user, searchResult).ConfigureAwait(false);
+        }
+        else
+        {
+            await player.PlayAsync(user, new ExtendedTrackItem(searchResult.Tracks[0], user), false).ConfigureAwait(false);
         }
         
-        await player.PlayAsync(user, new ExtendedTrackItem(result.Tracks[0], user), false).ConfigureAwait(false);
         return Ok();
     }
     
@@ -99,14 +96,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
     public async Task<IActionResult> Add([FromQuery] string url)
     {
         var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
-        if (player is null)
-        {
-            return NotFound();
-        }
-        if (!player.IsUserListening(user))
-        {
-            return Forbid();
-        }
+        if (!IsAllowedToPerform(player, user, out var result)) return result;
         
         var track = await audioService.Tracks.LoadTrackAsync(url, new TrackLoadOptions(TrackSearchMode.None, StrictSearchBehavior.Throw)).ConfigureAwait(false);
         if (track is null)
@@ -123,14 +113,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
     public async Task<IActionResult> Pause()
     {
         var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
-        if (player is null)
-        {
-            return NotFound();
-        }
-        if (!player.IsUserListening(user))
-        {
-            return Forbid();
-        }
+        if (!IsAllowedToPerform(player, user, out var result)) return result;
 
         await player.PauseAsync(user).ConfigureAwait(false);
         return Ok();
@@ -141,14 +124,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
     public async Task<IActionResult> Resume()
     {
         var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
-        if (player is null)
-        {
-            return NotFound();
-        }
-        if (!player.IsUserListening(user))
-        {
-            return Forbid();
-        }
+        if (!IsAllowedToPerform(player, user, out var result)) return result;
 
         await player.ResumeAsync(user).ConfigureAwait(false);
         return Ok();
@@ -159,14 +135,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
     public async Task<IActionResult> Stop()
     {
         var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
-        if (player is null)
-        {
-            return NotFound();
-        }
-        if (!player.IsUserListening(user))
-        {
-            return Forbid();
-        }
+        if (!IsAllowedToPerform(player, user, out var result)) return result;
 
         await player.StopAsync(user).ConfigureAwait(false);
         return Ok();
@@ -177,14 +146,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
     public async Task<IActionResult> Disconnect()
     {
         var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
-        if (player is null)
-        {
-            return NotFound();
-        }
-        if (!player.IsUserListening(user))
-        {
-            return Forbid();
-        }
+        if (!IsAllowedToPerform(player, user, out var result)) return result;
 
         await player.DisconnectAsync().ConfigureAwait(false);
         return Ok();
@@ -195,14 +157,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
     public async Task<IActionResult> Move([FromQuery] int from, [FromQuery] int to)
     {
         var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
-        if (player is null)
-        {
-            return NotFound();
-        }
-        if (!player.IsUserListening(user))
-        {
-            return Forbid();
-        }
+        if (!IsAllowedToPerform(player, user, out var result)) return result;
 
         await player.MoveTrackAsync(user, from, to).ConfigureAwait(false);
         return Ok();
@@ -213,14 +168,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
     public async Task<IActionResult> Next()
     {
         var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
-        if (player is null)
-        {
-            return NotFound();
-        }
-        if (!player.IsUserListening(user))
-        {
-            return Forbid();
-        }
+        if (!IsAllowedToPerform(player, user, out var result)) return result;
 
         await player.SkipAsync(user).ConfigureAwait(false);
         return Ok();
@@ -231,14 +179,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
     public async Task<IActionResult> SkipTo([FromQuery] int index)
     {
         var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
-        if (player is null)
-        {
-            return NotFound();
-        }
-        if (!player.IsUserListening(user))
-        {
-            return Forbid();
-        }
+        if (!IsAllowedToPerform(player, user, out var result)) return result;
 
         await player.SkipToAsync(user, index).ConfigureAwait(false);
         return Ok();
@@ -249,14 +190,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
     public async Task<IActionResult> Remove([FromQuery] int index)
     {
         var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
-        if (player is null)
-        {
-            return NotFound();
-        }
-        if (!player.IsUserListening(user))
-        {
-            return Forbid();
-        }
+        if (!IsAllowedToPerform(player, user, out var result)) return result;
 
         await player.RemoveAtAsync(user, index).ConfigureAwait(false);
         return Ok();
@@ -267,14 +201,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
     public async Task<IActionResult> Rewind()
     {
         var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
-        if (player is null)
-        {
-            return NotFound();
-        }
-        if (!player.IsUserListening(user))
-        {
-            return Forbid();
-        }
+        if (!IsAllowedToPerform(player, user, out var result)) return result;
 
         await player.RewindAsync(user).ConfigureAwait(false);
         return Ok();
@@ -285,14 +212,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
     public async Task<IActionResult> Seek([FromQuery] int position)
     {
         var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
-        if (player is null)
-        {
-            return NotFound();
-        }
-        if (!player.IsUserListening(user))
-        {
-            return Forbid();
-        }
+        if (!IsAllowedToPerform(player, user, out var result)) return result;
 
         await player.SeekAsync(user, position).ConfigureAwait(false);
         return Ok();
@@ -303,14 +223,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
     public async Task<IActionResult> SetVolume([FromQuery] int volume)
     {
         var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
-        if (player is null)
-        {
-            return NotFound();
-        }
-        if (!player.IsUserListening(user))
-        {
-            return Forbid();
-        }
+        if (!IsAllowedToPerform(player, user, out var result)) return result;
 
         await player.SetVolumeAsync(user, volume).ConfigureAwait(false);
         return Ok();
@@ -321,14 +234,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
     public async Task<IActionResult> Repeat()
     {
         var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
-        if (player is null)
-        {
-            return NotFound();
-        }
-        if (!player.IsUserListening(user))
-        {
-            return Forbid();
-        }
+        if (!IsAllowedToPerform(player, user, out var result)) return result;
 
         await player.CycleRepeatModeAsync(user).ConfigureAwait(false);
         return Ok();
@@ -339,15 +245,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
     public async Task<IActionResult> Shuffle()
     {
         var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
-        if (player is null)
-        {
-            return NotFound();
-        }
-        if (!player.IsUserListening(user))
-        {
-            return Forbid();
-        }
-
+        if (!IsAllowedToPerform(player, user, out var result)) return result;
         
         await player.ShuffleAsync(user).ConfigureAwait(false);
         return Ok();
@@ -358,14 +256,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
     public async Task<IActionResult> DistinctQueue()
     {
         var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
-        if (player is null)
-        {
-            return NotFound();
-        }
-        if (!player.IsUserListening(user))
-        {
-            return Forbid();
-        }
+        if (!IsAllowedToPerform(player, user, out var result)) return result;
 
         await player.DistinctQueueAsync(user).ConfigureAwait(false);
         return Ok();
@@ -376,14 +267,7 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
     public async Task<IActionResult> ClearQueue()
     {
         var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
-        if (player is null)
-        {
-            return NotFound();
-        }
-        if (!player.IsUserListening(user))
-        {
-            return Forbid();
-        }
+        if (!IsAllowedToPerform(player, user, out var result)) return result;
 
         await player.ClearQueueAsync(user).ConfigureAwait(false);
         return Ok();
@@ -394,16 +278,50 @@ public class PlayerController(MusicService musicService, DiscordSocketClient cli
     public async Task<IActionResult> ReverseQueue()
     {
         var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
-        if (player is null)
-        {
-            return NotFound();
-        }
-        if (!player.IsUserListening(user))
-        {
-            return Forbid();
-        }
+        if (!IsAllowedToPerform(player, user, out var result)) return result;
 
         await player.ReverseQueueAsync(user).ConfigureAwait(false);
         return Ok();
+    }
+
+    [Route("autoplay")]
+    [HttpPost]
+    public async Task<IActionResult> ToggleAutoplay()
+    {
+        var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
+        if (!IsAllowedToPerform(player, user, out var result)) return result;
+
+        await player.ToggleAutoPlayAsync(user).ConfigureAwait(false);
+        return Ok();
+    }
+    
+    private async Task<(IUser?, SocketPlayer?)> GetPlayerAndUserAsync()
+    {
+        var identity = HttpContext.User.Identity as ClaimsIdentity;
+        if (!identity.TryGetGuildId(out var guildId) || !identity.TryGetUserId(out var userId))
+        {
+            return (null, null);
+        }
+
+        var player = await musicService.TryGetPlayerAsync(guildId.Value).ConfigureAwait(false);
+        return (client.GetUser(userId.Value), player);
+    }
+    
+    private bool IsAllowedToPerform([NotNullWhen(true)] SocketPlayer? player, [NotNullWhen(true)] IUser? user, [NotNullWhen(false)] out IActionResult? result)
+    {
+        if (player is null || user is null)
+        {
+            result = NotFound();
+            return false;
+        }
+
+        if (player.IsUserListening(user))
+        {
+            result = null;
+            return true;
+        }
+        
+        result = Forbid();
+        return false;
     }
 }
