@@ -6,8 +6,8 @@ using Zeenox.Models.Player;
 
 namespace Zeenox.Players;
 
-public class InteractivePlayer
-    (IPlayerProperties<MusicPlayer, InteractivePlayerOptions> properties) : MusicPlayer(properties)
+public class EmbedPlayer
+    (IPlayerProperties<MusicPlayer, EmbedPlayerOptions> properties) : MusicPlayer(properties)
 {
     private ITextChannel? TextChannel { get; } = properties.Options.Value.TextChannel;
     public SocketVoiceChannel VoiceChannel { get; } = properties.Options.Value.VoiceChannel;
@@ -168,5 +168,11 @@ public class InteractivePlayer
     public Task DeleteNowPlayingMessageAsync()
     {
         return NowPlayingMessage?.DeleteAsync() ?? Task.CompletedTask;
+    }
+
+    protected override async ValueTask DisposeAsyncCore()
+    {
+        await DeleteNowPlayingMessageAsync().ConfigureAwait(false);
+        await base.DisposeAsyncCore().ConfigureAwait(false);
     }
 }
