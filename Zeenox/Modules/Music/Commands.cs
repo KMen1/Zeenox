@@ -13,8 +13,10 @@ namespace Zeenox.Modules.Music;
 public class Commands : MusicBase
 {
     public InteractiveService InteractiveService { get; set; } = null!;
-
-    [SlashCommand("resumesession", "resume test")]
+    
+    [RequireWhitelistedChannel]
+    [RequireWhitelistedRole]
+    [SlashCommand("resume-session", "Resumes the previous session, if any.")]
     public async Task ResumeAsync()
     {
         await DeferAsync(true).ConfigureAwait(false);
@@ -22,11 +24,19 @@ public class Commands : MusicBase
         if (player is null)
             return;
 
-        await player.ResumeSessionAsync(Context.User, Context.Client).ConfigureAwait(false);
+        if (!player.HasResumeSession)
+        {
+            await FollowupAsync("No previous session found", ephemeral: true).ConfigureAwait(false);
+            return;
+        }
+
+        await player.ResumeSessionAsync(Context.User).ConfigureAwait(false);
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
     }
 
-    [SlashCommand("actionhistory", "Shows every action that has been performed on the player.")]
+    [RequireWhitelistedChannel]
+    [RequireWhitelistedRole]
+    [SlashCommand("actions", "Shows every action that has been performed on the player.")]
     public async Task ShowActionHistoryAsync()
     {
         var player = await TryGetPlayerAsync(isDeferred: true).ConfigureAwait(false);
@@ -299,22 +309,6 @@ public class Commands : MusicBase
 
         await player.ReverseQueueAsync(Context.User).ConfigureAwait(false);
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
-    }
-
-    [RequireWhitelistedChannel]
-    [RequireWhitelistedRole]
-    [SlashCommand("lyrics", "Shows the lyrics of the current song.")]
-    public async Task LyricsAsync()
-    {
-        await DeferAsync(true).ConfigureAwait(false);
-        var lyrics = await MusicService.GetLyricsAsync(Context.Guild.Id).ConfigureAwait(false);
-        if (lyrics is null)
-        {
-            await FollowupAsync("No lyrics found", ephemeral: true).ConfigureAwait(false);
-            return;
-        }
-
-        await FollowupAsync(lyrics, ephemeral: true).ConfigureAwait(false);
     }
 
     [RequireUserPermission(GuildPermission.ManageGuild)]
