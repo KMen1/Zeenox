@@ -1,9 +1,9 @@
-﻿using System.Net.WebSockets;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Net.WebSockets;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using Discord;
-using Zeenox.Models;
 using Zeenox.Models.Socket;
 using Zeenox.Players;
 
@@ -18,32 +18,44 @@ public static class Extensions
             : timeSpan.ToString(timeSpan.TotalDays < 1 ? @"hh\:mm\:ss" : @"dd\:hh\:mm\:ss");
     }
 
-    public static ulong? GetGuildId(this ClaimsIdentity claimsPrincipal)
+    public static bool TryGetUserId(
+        this ClaimsIdentity? claimsPrincipal,
+        [NotNullWhen(true)] out ulong? userId
+    )
     {
-        return ulong.TryParse(claimsPrincipal.FindFirst("GUILD_ID")?.Value, out var guildId)
-            ? guildId
-            : null;
+        var result = ulong.TryParse(claimsPrincipal?.FindFirst("USER_ID")?.Value, out var id);
+        userId = id;
+        return result;
     }
 
-    public static ulong? GetUserId(this ClaimsIdentity claimsPrincipal)
+    public static bool TryGetUserId(
+        this ClaimsPrincipal? claimsPrincipal,
+        [NotNullWhen(true)] out ulong? userId
+    )
     {
-        return ulong.TryParse(claimsPrincipal.FindFirst("USER_ID")?.Value, out var userId)
-            ? userId
-            : null;
+        var result = ulong.TryParse(claimsPrincipal?.FindFirst("USER_ID")?.Value, out var id);
+        userId = id;
+        return result;
     }
 
-    public static ulong? GetGuildId(this ClaimsPrincipal claimsPrincipal)
+    public static bool TryGetGuildId(
+        this ClaimsIdentity? claimsPrincipal,
+        [NotNullWhen(true)] out ulong? guildId
+    )
     {
-        return ulong.TryParse(claimsPrincipal.FindFirst("GUILD_ID")?.Value, out var guildId)
-            ? guildId
-            : null;
+        var result = ulong.TryParse(claimsPrincipal?.FindFirst("GUILD_ID")?.Value, out var id);
+        guildId = id;
+        return result;
     }
 
-    public static ulong? GetUserId(this ClaimsPrincipal claimsPrincipal)
+    public static bool TryGetGuildId(
+        this ClaimsPrincipal? claimsPrincipal,
+        [NotNullWhen(true)] out ulong? guildId
+    )
     {
-        return ulong.TryParse(claimsPrincipal.FindFirst("USER_ID")?.Value, out var userId)
-            ? userId
-            : null;
+        var result = ulong.TryParse(claimsPrincipal?.FindFirst("GUILD_ID")?.Value, out var id);
+        guildId = id;
+        return result;
     }
 
     public static Task SendTextAsync(this WebSocket socket, string text)
@@ -56,41 +68,9 @@ public static class Extensions
         );
     }
 
-    public static async Task InitSocketAsync(
-        this WebSocket socket,
-        LoggedPlayer player,
-        PlayerResumeSessionDto? resumeSessionDto
-    )
-    {
-        await socket
-            .SendTextAsync(
-                JsonSerializer.Serialize(
-                    new InitPlayerPayload(
-                        player.VoiceChannel.Name,
-                        player.StartedAt.ToUnixTimeSeconds(),
-                        player.Position?.Position.Seconds ?? 0,
-                        resumeSessionDto
-                    )
-                )
-            )
-            .ConfigureAwait(false);
-        await socket
-            .SendTextAsync(JsonSerializer.Serialize(new UpdatePlayerPayload(player)))
-            .ConfigureAwait(false);
-        await socket
-            .SendTextAsync(JsonSerializer.Serialize(new TrackPayload(player.CurrentItem)))
-            .ConfigureAwait(false);
-        await socket
-            .SendTextAsync(JsonSerializer.Serialize(new UpdateQueuePayload(player)))
-            .ConfigureAwait(false);
-        await socket
-            .SendTextAsync(JsonSerializer.Serialize(new AddActionsPayload(player)))
-            .ConfigureAwait(false);
-    }
-
     public static async Task SendSocketMessagesAsync(
         this WebSocket socket,
-        LoggedPlayer player,
+        SocketPlayer player,
         bool updatePlayer,
         bool updateTrack,
         bool updateQueue,
@@ -107,14 +87,14 @@ public static class Extensions
         if (updateTrack)
         {
             await socket
-                .SendTextAsync(JsonSerializer.Serialize(new TrackPayload(player.CurrentItem)))
+                .SendTextAsync(JsonSerializer.Serialize(new UpdateTrackPayload(player.CurrentItem)))
                 .ConfigureAwait(false);
         }
 
         if (updateQueue)
         {
             await socket
-                .SendTextAsync(JsonSerializer.Serialize(new UpdateQueuePayload(player)))
+                .SendTextAsync(JsonSerializer.Serialize(new UpdateQueuePayload(player.Queue)))
                 .ConfigureAwait(false);
         }
 

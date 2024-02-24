@@ -3,13 +3,12 @@ using Zeenox.Players;
 
 namespace Zeenox.Models.Socket;
 
-public sealed class AddActionPayload(object? action = null) : IPayload
+public sealed class AddActionPayload(object action) : IPayload
 {
     public PayloadType Type { get; } = PayloadType.AddAction;
+    public object Action { get; } = action;
     
-    public object? Action { get; } = action;
-    
-    public AddActionPayload(LoggedPlayer player) : this(player.GetActionForSerialization())
+    public AddActionPayload(SocketPlayer player) : this(player.GetActionForSerialization())
     {
     }
 }

@@ -2,7 +2,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Discord;
-using Zeenox.Models.Socket;
+using Zeenox.Dtos;
 using ActionType = Zeenox.Enums.ActionType;
 
 namespace Zeenox.Models.Actions;
@@ -19,7 +19,7 @@ public class UserJsonConverter : JsonConverter<IUser>
         IUser user,
         JsonSerializerOptions options)
     {
-        JsonSerializer.Serialize(writer, new BasicDiscordUser(user), options);
+        JsonSerializer.Serialize(writer, new SocketUserDTO(user), options);
     }
 }
 

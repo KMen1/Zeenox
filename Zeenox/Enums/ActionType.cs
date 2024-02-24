@@ -12,5 +12,6 @@ public enum ActionType
     Seek,
     VolumeUp,
     VolumeDown,
-    ChangeLoopMode
+    ChangeLoopMode,
+    ToggleAutoPlay,
 }

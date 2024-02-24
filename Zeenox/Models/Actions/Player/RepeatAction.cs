@@ -6,11 +6,11 @@ namespace Zeenox.Models.Actions.Player;
 
 public class RepeatAction(IUser user, TrackRepeatMode loopMode) : Action(user, ActionType.ChangeLoopMode)
 {
-    public TrackRepeatMode LoopMode { get; set; } = loopMode;
+    public TrackRepeatMode TrackRepeatMode { get; set; } = loopMode;
 
     public override string Stringify()
     {
-        return LoopMode switch
+        return TrackRepeatMode switch
         {
             TrackRepeatMode.None => "disabled loop mode",
             TrackRepeatMode.Track => "set current track to be repeated",

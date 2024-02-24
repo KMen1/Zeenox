@@ -1,4 +1,4 @@
-﻿namespace Zeenox.Models.Socket;
+﻿namespace Zeenox.Models;
 
 public class TokenGenerationRequest
 {
