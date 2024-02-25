@@ -27,14 +27,14 @@
         <PackageReference Include="Fergun.Interactive" Version="1.7.5" />
         <PackageReference Include="HtmlAgilityPack" Version="1.11.59" />
         <PackageReference Include="HtmlAgilityPack.CssSelectors.NetCore" Version="1.2.1" />
-        <PackageReference Include="Lavalink4NET" Version="4.0.12-beta.5" />
-        <PackageReference Include="Lavalink4NET.Discord.NET" Version="4.0.12-beta.5" />
-        <PackageReference Include="Lavalink4NET.InactivityTracking" Version="4.0.12-beta.5" />
-        <PackageReference Include="Lavalink4NET.Integrations.Lavasrc" Version="4.0.12-beta.5" />
+        <PackageReference Include="Lavalink4NET" Version="4.0.12-beta.6" />
+        <PackageReference Include="Lavalink4NET.Discord.NET" Version="4.0.12-beta.6" />
+        <PackageReference Include="Lavalink4NET.InactivityTracking" Version="4.0.12-beta.6" />
+        <PackageReference Include="Lavalink4NET.Integrations.Lavasrc" Version="4.0.12-beta.6" />
         <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.1" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.1" />
         <PackageReference Include="Microsoft.AspNetCore.RateLimiting" Version="7.0.0-rc.2.22476.2" />
-        <PackageReference Include="MongoDB.Driver" Version="2.23.1" />
+        <PackageReference Include="MongoDB.Driver" Version="2.24.0" />
         <PackageReference Include="Serilog" Version="3.1.1"/>
         <PackageReference Include="Serilog.AspNetCore" Version="8.0.1" />
         <PackageReference Include="Serilog.Sinks.Console" Version="5.0.1" />
