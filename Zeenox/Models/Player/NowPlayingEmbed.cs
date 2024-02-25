@@ -10,9 +10,7 @@ public class NowPlayingEmbed : EmbedBuilder
     {
         var track = trackItem.Track;
 
-        Author = new EmbedAuthorBuilder()
-            .WithName("NOW PLAYING")
-            .WithIconUrl("https://im2.ezgif.com/tmp/ezgif-2-81f6555576.gif");
+        Author = new EmbedAuthorBuilder().WithName("NOW PLAYING");
         Title = track.Title;
         Url = track.Uri?.ToString() ?? "";
         Color = new Color(31, 31, 31);
