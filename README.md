@@ -7,49 +7,98 @@
 
 A Discord music bot that focuses on speed and ease of usability, with a web dashboard, all for completely free. Allows playback from Spotify, YouTube, SoundCloud, BandCamp, Twitch
 
-## Web Interface
+# Features
 
-Zeenox comes with a fully functional web interface that allows you to control the bot from your browser. It is built with Next.js and communicates with the bot via a REST API and websockets.
-For more information [click here](https://github.com/KMen1/Zeenox-Web)
+- Comes with a fully functional **web interface** that allows you to control the bot from your browser. For more information [click here](https://github.com/KMen1/Zeenox-Web)
+- Can be used from discord, web or both
+- **Automatically saves any session that hasn't been fully completed**, so you can resume listening later exactly where you left off
+- **Keeps track of every action** that is performed and allows you to view who performed it and when
+- Whitelist roles, users and channels
+- **Exclusive mode** - Limit usage to current song requester
+- **Autoplay** - plays recommended songs after the queue is empty
+- **Lyrics** - Shows the lyrics for the currently playing song (_only available on web_)
+- **Autocomplete search** - The _play_ command uses autocomplete to let you search for songs
+- **Loop modes** - Current song or queue
+- Ability to shuffle, clear, reverse, remove songs or duplicates from the queue
 
-## Session Resuming
+# Setup
 
-Zeenox automatically saves any session that hasn't been fully completed, so you can resume listening later exactly where you left off.
+### Requirements
 
-## Interactive Player
+- .NET 8
+- Running instance of [Lavalink](https://github.com/lavalink-devs/Lavalink) with [LavaSrc](https://github.com/topi314/LavaSrc) and [LavaSearch](https://github.com/topi314/LavaSearch)
+- Spotify application, [click here](https://developer.spotify.com/dashboard/applications) to create one
+- Discord OAuth application, [click here](https://discord.com/developers/applications) to create one
+- MongoDB database
 
-<p><img src="https://img001.prntscr.com/file/img001/BrF1mH45QzG8IlqoUdWuHg.png" height="400" align="right"></p>
-Zeenox aims to let users have full control over the player without the need for typing commands.
+### Installation
 
-- Everything important can be controlled right from the now playing message! (Back, Skip, Pause, Resume, Volume +-, Loop mode, Favorite song)
-- The now playing message also shows information about the current song such as the title, length and album cover _(if available)_ as well as the volume of the player and the next 5 songs in the queue.
-- The _/play_ command uses autocomplete to let you search for songs right from the chat.
-- Ability to loop songs, playlists and queue.
-- Ability to shuffle, clear, reverse, remove songs or duplicates from the queue.
-<center><p><img src="https://img001.prntscr.com/file/img001/NoFKqOzgQIidxYS99kdq7w.png" width="400" align="center"></center>
+1. Clone the repository
 
-## Action History
+```bash
+git clone https://github.com/KMen1/Zeenox.git
+```
 
-Zeenox keeps track of every action that is performed and allows you to view who performed it and when, if enabled.
+2. Build project
 
-## User Restrictions
+```bash
+dotnet restore "Zeenox/Zeenox.csproj"
+dotnet build "Zeenox/Zeenox.csproj" -c Release -o /app/build
+dotnet publish "Zeenox/Zeenox.csproj" -c Release -o /app/publish /p:UseAppHost=false
+```
 
-Zeenox offers a variety of options to restrict the usage of the bot to certain users or roles.
+3. Edit appsettings.json in publish folder
 
-- You can set an unlimited amount of roles that are allowed to use the bot. Users without any of these roles will not be able to use the bot.
-- You can allow access to the bot on a per-user basis.
-- With exclusive mode enabled, only the user that requested the currently playing song will be able to control the player.
+> [!IMPORTANT]
+> All values must be provided in order for the bot to start and function correctly!
 
-## Channel restrictions
+```json
+{
+  "Kestrel": {
+    "Endpoints": {
+      "Http": {
+        "Url": "http://*:80"
+      },
+      "Https": {
+        "Url": "https://*:443"
+      }
+    }
+  },
+  "https_port": 443,
+  "JwtSettings": {
+    "Key": "",
+    "Issuer": "https://CHANGEME.com",
+    "Audience": "https://CHANGEME.com"
+  },
+  "Discord": {
+    "Token": "",
+    "Activity": "/play"
+  },
+  "MongoDB": {
+    "ConnectionString": "",
+    "Database": "zeenox",
+    "ConfigCollection": "config",
+    "ResumeSessionCollection": "resume_sessions"
+  },
+  "Lavalink": {
+    "Host": "http://localhost:2333",
+    "Password": "youshallnotpass"
+  },
+  "Spotify": {
+    "ClientId": "",
+    "ClientSecret": "",
+    "Market": "US"
+  },
+  "AllowedHosts": "*",
+  "FrontendUrl": "https://CHANGEME.com"
+}
+```
 
-You can set an unlimited number of different voice channels as allowed channels. The bot will refuse to start playing in a channel that is not whitelisted.
+4. Run the bot from the publish folder
 
-## Built with
-
-- [Lavalink](https://github.com/freyacodes/Lavalink)
-- [Discord.NET](https://github.com/discord-net/Discord.Net)
-- [Lavalink4NET](https://github.com/angelobreuer/Lavalink4NET)
-- [MongoDB](https://github.com/mongodb/mongo-csharp-driver)
+```bash
+dotnet Zeenox.dll
+```
 
 ## License
 
