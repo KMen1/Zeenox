@@ -15,9 +15,9 @@ namespace Zeenox.Modules.Music;
 public class MusicBase : ModuleBase
 {
     public IAudioService AudioService { get; set; } = null!;
-    public MusicService MusicService { get; set; } = null!;
     public DatabaseService DatabaseService { get; set; } = null!;
     public SpotifyClient SpotifyClient { get; set; } = null!;
+    public IConfiguration Configuration { get; set; } = null!;
 
     protected async ValueTask<SocketPlayer?> TryGetPlayerAsync(
         bool allowConnect = false,
@@ -44,6 +44,7 @@ public class MusicBase : ModuleBase
                 properties.Options.Value.DiscordClient = Context.Client;
                 properties.Options.Value.AudioService = AudioService;
                 properties.Options.Value.SpotifyClient = SpotifyClient;
+                properties.Options.Value.SpotifyMarket = Configuration["Spotify:Market"] ?? "US";
                 return ValueTask.FromResult(new SocketPlayer(properties));
             }
         );
@@ -108,7 +109,6 @@ public class MusicBase : ModuleBase
             PlayerRetrieveStatus.BotNotConnected => "The bot is not connected to any channel.",
             PlayerRetrieveStatus.VoiceChannelMismatch
                 => "You must be in the same voice channel as the bot.",
-
             PlayerRetrieveStatus.PreconditionFailed
                 when Equals(result.Precondition, PlayerPrecondition.Playing)
                 => "The player is currently now playing any track.",

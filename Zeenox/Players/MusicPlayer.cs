@@ -4,7 +4,6 @@ using Lavalink4NET.Players.Queued;
 using Lavalink4NET.Players.Vote;
 using Lavalink4NET.Protocol.Payloads.Events;
 using Lavalink4NET.Rest.Entities.Tracks;
-using Lavalink4NET.Tracks;
 using SpotifyAPI.Web;
 using Zeenox.Models.Player;
 
@@ -18,6 +17,7 @@ public abstract class MusicPlayer(IPlayerProperties<MusicPlayer, MusicPlayerOpti
     public bool IsAutoPlayEnabled { get; private set; } = true;
     private SpotifyClient SpotifyClient => properties.Options.Value.SpotifyClient;
     private IAudioService AudioService => properties.Options.Value.AudioService;
+    private string SpotifyMarket => properties.Options.Value.SpotifyMarket;
 
     protected virtual async Task<int> PlayAsync(IEnumerable<ExtendedTrackItem> tracksEnumerable)
     {
@@ -152,35 +152,58 @@ public abstract class MusicPlayer(IPlayerProperties<MusicPlayer, MusicPlayerOpti
     {
         await base.NotifyTrackEndedAsync(queueItem, endReason, cancellationToken).ConfigureAwait(false);
         
-        if (IsAutoPlayEnabled && Queue.Count < 2)
+        if (IsAutoPlayEnabled && Queue.Count < 2 && RepeatMode == TrackRepeatMode.None)
         {
-            var recommendedTracks = await GetRecommendedTrackAsync(Queue, queueItem, CurrentItem is null ? 3 : 2 - Queue.Count).ConfigureAwait(false);
-            await PlayAsync(recommendedTracks.Select(x => new ExtendedTrackItem(x, null))).ConfigureAwait(false);
+            var recommendedTracks = await GetRecommendedTrackAsync(CurrentItem is null ? 3 : 2 - Queue.Count).ConfigureAwait(false);
+            await PlayAsync(recommendedTracks).ConfigureAwait(false);
         }
     }
 
-    private async Task<List<LavalinkTrack>> GetRecommendedTrackAsync(ITrackQueue queue, ITrackQueueItem? currentTrack, int limit = 2)
+    private async Task<List<ExtendedTrackItem>> GetRecommendedTrackAsync(int limit = 2)
     {
-        var tracks = queue.History?.Take(5).ToList() ?? [];
-        if (currentTrack is not null)
-            tracks.Add(currentTrack);
-        if (tracks.Count > 5)
-            tracks.RemoveAt(tracks.Count - 1);
+        var trackIds = GetSeedTrackIds();
+        var request = new RecommendationsRequest
+        {
+            Market = SpotifyMarket,
+        };
+        request.SeedTracks.AddRange(trackIds);
+        request.Min.Add("popularity", "50");
         
-        var trackIds = tracks.Select(x => x.Identifier);
-        var recommendationsRequest = new RecommendationsRequest();
-        ((List<string>)recommendationsRequest.SeedTracks).AddRange(trackIds);
-        var recommendationsResponse = await SpotifyClient.Browse.GetRecommendations(recommendationsRequest).ConfigureAwait(false);
-        var orderedTracks = recommendationsResponse.Tracks.OrderBy(x => x.Popularity).Reverse().ToList();
+        var response = await SpotifyClient.Browse.GetRecommendations(request).ConfigureAwait(false);
+        var orderedTracks = response.Tracks.OrderByDescending(x => x.Popularity).ToList();
         
-        var recommendedTracks = new List<LavalinkTrack>();
+        var recommendedTracks = new List<ExtendedTrackItem>();
         for (var i = 0; i < limit; i++)
         {
             var url = orderedTracks.Skip(i).First(x => Queue.All(y => y.Identifier != x.Id)).ExternalUrls["spotify"];
             var track = await AudioService.Tracks.LoadTrackAsync(url, new TrackLoadOptions { SearchMode = TrackSearchMode.None}).ConfigureAwait(false);
-            recommendedTracks.Add(track!);
+            recommendedTracks.Add(new ExtendedTrackItem(track!, null));
         }
         
         return recommendedTracks;
+    }
+
+    private List<string> GetSeedTrackIds()
+    {
+        var ids = new List<string>();
+        var count = 0;
+        var index1 = 0;
+        var index2 = 0;
+
+        while (count < 4 && (index1 < Queue.Count || index2 < Queue.History?.Count))
+        {
+            if (index1 < Queue.Count)
+            {
+                ids.Add(Queue[index1].Identifier);
+                index1++;
+                count++;
+            }
+
+            if (!(index2 < Queue.History?.Count)) continue;
+            ids.Add(Queue.History[index2].Identifier);
+            index2++;
+            count++;
+        }
+        return ids;
     }
 }

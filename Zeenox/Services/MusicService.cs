@@ -20,7 +20,8 @@ public partial class MusicService(
     DatabaseService databaseService,
     HttpClient httpClient,
     DiscordSocketClient client,
-    SpotifyClient spotifyClient)
+    SpotifyClient spotifyClient,
+    IConfiguration config)
 {
     private readonly HtmlWeb _htmlWeb = new();
 
@@ -56,6 +57,7 @@ public partial class MusicService(
                 properties.Options.Value.ResumeSession = resumeSession;
                 properties.Options.Value.SpotifyClient = spotifyClient;
                 properties.Options.Value.AudioService = audioService;
+                properties.Options.Value.SpotifyMarket = config["Spotify:Market"] ?? "US";
                 return ValueTask.FromResult(new SocketPlayer(properties));
             }
         );
