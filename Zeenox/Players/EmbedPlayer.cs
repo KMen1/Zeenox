@@ -165,9 +165,15 @@ public class EmbedPlayer
             : new NowPlayingButtons(Queue, State is PlayerState.Paused, Volume, IsAutoPlayEnabled, RepeatMode);
     }
 
-    public Task DeleteNowPlayingMessageAsync()
+    public async Task DeleteNowPlayingMessageAsync()
     {
-        return NowPlayingMessage?.DeleteAsync() ?? Task.CompletedTask;
+        if (NowPlayingMessage is null || TextChannel is null)
+            return;
+        
+        if (await TextChannel.GetMessageAsync(NowPlayingMessage.Id).ConfigureAwait(false) is null)
+            return;
+        
+        await NowPlayingMessage.DeleteAsync().ConfigureAwait(false);
     }
 
     protected override async ValueTask DisposeAsyncCore()
