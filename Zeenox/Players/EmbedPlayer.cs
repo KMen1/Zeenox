@@ -162,7 +162,7 @@ public class EmbedPlayer
                 ButtonStyle.Danger,
                 new Emoji("⚠️")
             )
-            : new NowPlayingButtons(Queue, State is PlayerState.Paused, Volume, RepeatMode);
+            : new NowPlayingButtons(Queue, State is PlayerState.Paused, Volume, IsAutoPlayEnabled, RepeatMode);
     }
 
     public Task DeleteNowPlayingMessageAsync()
