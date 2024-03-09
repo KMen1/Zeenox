@@ -11,6 +11,6 @@ public class RewindAction(IUser user, ExtendedTrackItem trackItem) : Action(user
     
     public override string Stringify()
     {
-        return $"rewound to: {trackItem.Title}";
+        return $"rewound to: {Track.Title}";
     }
 }

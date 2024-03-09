@@ -85,7 +85,7 @@ public class SocketController : ControllerBase
                 return;
         }
 
-        await player.RegisterSocketAsync(userId.Value, socket).ConfigureAwait(false);
+        player.RegisterSocket(userId.Value, socket);
         await ReceiveAsync(socket).ConfigureAwait(false);
     }
 

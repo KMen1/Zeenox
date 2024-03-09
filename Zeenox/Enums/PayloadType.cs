@@ -1,11 +1,11 @@
 ﻿namespace Zeenox.Enums;
 
+[Flags]
 public enum PayloadType
 {
-    InitPlayer,
-    UpdatePlayer,
-    UpdateQueue,
-    UpdateTrack,
-    AddAction,
-    AddActions,
+    None = 0,
+    UpdatePlayer = 1,
+    UpdateQueue = 2,
+    UpdateTrack = 4,
+    UpdateActions = 8,
 }

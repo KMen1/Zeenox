@@ -11,6 +11,6 @@ public class PlayAction(IUser user, ExtendedTrackItem trackItem) : Action(user, 
 
     public override string Stringify()
     {
-        return $"played: {trackItem.Title}";
+        return $"played: {Track.Title}";
     }
 }

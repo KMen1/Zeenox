@@ -3,12 +3,13 @@ using System.Net.WebSockets;
 using System.Text.Json;
 using Discord;
 using Discord.WebSocket;
+using Lavalink4NET.Integrations.LyricsJava;
 using Lavalink4NET.Players;
 using Lavalink4NET.Players.Queued;
 using Lavalink4NET.Protocol.Payloads.Events;
 using Lavalink4NET.Rest.Entities.Tracks;
 using Lavalink4NET.Tracks;
-using Zeenox.Dtos;
+using Zeenox.Enums;
 using Zeenox.Models;
 using Zeenox.Models.Actions.Queue;
 using Zeenox.Models.Player;
@@ -156,18 +157,10 @@ public sealed class SocketPlayer
         return result;
     }
 
-    public async Task RegisterSocketAsync(ulong userId, WebSocket socket)
+    public void RegisterSocket(ulong userId, WebSocket socket)
     {
         RemoveSocket(userId);
         _webSockets.TryAdd(userId, socket);
-        await InitializeSocket(socket).ConfigureAwait(false);
-    }
-
-    private async Task InitializeSocket(WebSocket socket)
-    {
-        var resumeSessionDto = ResumeSession is not null ? new ResumeSessionDTO(ResumeSession, _discordClient) : null;
-        var initPlayerPayload = new InitPlayerPayload(this, resumeSessionDto);
-        await socket.SendTextAsync(JsonSerializer.Serialize(initPlayerPayload)).ConfigureAwait(false);
         if (!IsRunningUpdatePositionLoop)
             _ = UpdatePositionLoopAsync();
     }
@@ -187,14 +180,14 @@ public sealed class SocketPlayer
             {
                 if (State is PlayerState.Playing && socket.State == WebSocketState.Open)
                 {
-                    await socket.SendTextAsync(JsonSerializer.Serialize(new UpdatePlayerPayload(this))).ConfigureAwait(false);
+                    await socket.SendTextAsync(JsonSerializer.Serialize(new Payload(PayloadType.UpdatePlayer))).ConfigureAwait(false);
                 }
                 else if (socket.State is WebSocketState.Closed or WebSocketState.Aborted)
                 {
                     RemoveSocket(userId);
                 }
             }
-            await Task.Delay(TimeSpan.FromSeconds(15)).ConfigureAwait(false);
+            await Task.Delay(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
         }
         IsRunningUpdatePositionLoop = false;
     }
@@ -213,7 +206,7 @@ public sealed class SocketPlayer
         {
             if (socket.State != WebSocketState.Open)
                 continue;
-            await socket.SendSocketMessagesAsync(this, updatePlayer, updateTrack, updateQueue, updateActions).ConfigureAwait(false);
+            await socket.SendSocketMessagesAsync(updatePlayer, updateTrack, updateQueue, updateActions).ConfigureAwait(false);
         }
     }
 
@@ -280,5 +273,11 @@ public sealed class SocketPlayer
     {
         await base.NotifyTrackEnqueuedAsync(queueItem, position, cancellationToken).ConfigureAwait(false);
         await UpdateSocketsAsync(updateQueue: true).ConfigureAwait(false);
+    }
+
+    public override async ValueTask NotifyLyricsLoadedAsync(Lyrics? lyrics, CancellationToken cancellationToken = new())
+    {
+        await base.NotifyLyricsLoadedAsync(lyrics, cancellationToken).ConfigureAwait(false);
+        await UpdateSocketsAsync(updateTrack: true).ConfigureAwait(false);
     }
 }

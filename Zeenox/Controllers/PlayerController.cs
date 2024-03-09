@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using System.Security.Claims;
+using System.Text.Json;
 using Asp.Versioning;
 using Discord;
 using Discord.WebSocket;
@@ -8,6 +9,8 @@ using Lavalink4NET.Rest.Entities.Tracks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Zeenox.Dtos;
+using Zeenox.Enums;
 using Zeenox.Models.Player;
 using Zeenox.Players;
 using Zeenox.Services;
@@ -22,15 +25,82 @@ namespace Zeenox.Controllers;
 [ApiVersion("1.0")]
 public class PlayerController(MusicService musicService, DiscordSocketClient client, IAudioService audioService, DatabaseService dbService) : ControllerBase
 {
-    [Route("lyrics")]
     [HttpGet]
-    public async Task<IActionResult> GetLyrics()
+    public async Task<IActionResult> GetPlayer()
     {
-        var identity = HttpContext.User.Identity as ClaimsIdentity;
-        if (!identity.TryGetGuildId(out var guildId)) return BadRequest();
+        var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
+        if (!IsAllowedToPerform(player, user, out var result)) return result;
+        var resumeSession = await dbService.GetResumeSessionAsync(player.GuildId).ConfigureAwait(false);
+        return Ok(JsonSerializer.Serialize(new FullPlayerDTO(player, resumeSession is null ? null : new ResumeSessionDTO(resumeSession, client))) );
+    }
 
-        var lyrics = await musicService.GetLyricsAsync(guildId.Value).ConfigureAwait(false);
-        return lyrics is null ? NotFound() : Ok(lyrics);
+    [Route("options")]
+    [HttpGet]
+    public async Task<IActionResult> GetPlayer(PayloadType type)
+    {
+        var data = new Dictionary<string, object?>();
+        var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
+        if (!IsAllowedToPerform(player, user, out var result)) return result;
+        
+        if (type.HasFlag(PayloadType.UpdatePlayer))
+        {
+            data["State"] = new SocketPlayerDTO(player);
+        }
+        
+        if (type.HasFlag(PayloadType.UpdateQueue))
+        {
+            data["Queue"] = new QueueDTO(player.Queue);
+        }
+        
+        if (type.HasFlag(PayloadType.UpdateActions))
+        {
+            data["Actions"] = player.GetActionsForSerialization();
+        }
+        
+        if (type.HasFlag(PayloadType.UpdateTrack))
+        {
+            data["CurrentTrack"] = player.CurrentItem is not null ? new TrackDTO(player.CurrentItem) : null;
+        }
+        
+        return Ok(JsonSerializer.Serialize(data));
+    }
+    
+    [Route("state")]
+    [HttpGet]
+    public async Task<IActionResult> GetPlayerState()
+    {
+        var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
+        return !IsAllowedToPerform(player, user, out var result) ? result : Ok(JsonSerializer.Serialize(new SocketPlayerDTO(player)));
+    }
+
+    [Route("queue")]
+    [HttpGet]
+    public async Task<IActionResult> GetQueue()
+    {
+        var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
+        return !IsAllowedToPerform(player, user, out var result) ? result : Ok(JsonSerializer.Serialize(new QueueDTO(player.Queue)));
+    }
+    
+    [Route("actions")]
+    [HttpGet]
+    public async Task<IActionResult> GetActions(long? lastActionTimestamp = null)
+    {
+        var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
+        return !IsAllowedToPerform(player, user, out var result) ? result : Ok(JsonSerializer.Serialize(player.GetActionsForSerialization()));
+    }
+    
+    [Route("current")]
+    [HttpGet]
+    public async Task<IActionResult> GetCurrentTrack()
+    {
+        var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
+        
+        if (player?.CurrentItem is null)
+        {
+            return NotFound();
+        }
+        
+        return !IsAllowedToPerform(player, user, out var result) ? result : Ok(JsonSerializer.Serialize(new TrackDTO(player.CurrentItem)));
     }
 
     [Route("resumesession")]

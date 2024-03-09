@@ -13,7 +13,7 @@ namespace Zeenox.Modules.Music;
 public class Commands : MusicBase
 {
     public InteractiveService InteractiveService { get; set; } = null!;
-    
+
     [RequireWhitelistedChannel]
     [RequireWhitelistedRole]
     [SlashCommand("resume-session", "Resumes the previous session, if any.")]

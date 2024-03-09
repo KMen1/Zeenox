@@ -27,11 +27,6 @@ public class LoggedPlayer
     {
         return Actions.Select(x => (object)x);
     }
-    
-    public object GetActionForSerialization()
-    {
-        return Actions.Last();
-    }
 
     public IEnumerable<string> StringifyActions()
     {

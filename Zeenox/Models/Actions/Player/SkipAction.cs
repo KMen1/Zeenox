@@ -12,6 +12,6 @@ public class SkipAction(IUser user, ExtendedTrackItem previous, ExtendedTrackIte
     
     public override string Stringify()
     {
-        return $"skipped to: {trackItem.Title}";
+        return $"skipped to: {Track.Title}";
     }
 }
