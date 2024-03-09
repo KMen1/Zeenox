@@ -1,4 +1,7 @@
-﻿using Lavalink4NET;
+﻿using System.Collections.Immutable;
+using Lavalink4NET;
+using Lavalink4NET.Integrations.LyricsJava;
+using Lavalink4NET.Integrations.LyricsJava.Players;
 using Lavalink4NET.Players;
 using Lavalink4NET.Players.Queued;
 using Lavalink4NET.Players.Vote;
@@ -10,7 +13,7 @@ using Zeenox.Models.Player;
 namespace Zeenox.Players;
 
 public abstract class MusicPlayer(IPlayerProperties<MusicPlayer, MusicPlayerOptions> properties)
-    : VoteLavalinkPlayer(properties)
+    : VoteLavalinkPlayer(properties), ILavaLyricsPlayerListener
 {
     public new ExtendedTrackItem? CurrentItem => (ExtendedTrackItem?)base.CurrentItem;
     public DateTimeOffset StartedAt { get; } = properties.SystemClock.UtcNow;
@@ -126,12 +129,6 @@ public abstract class MusicPlayer(IPlayerProperties<MusicPlayer, MusicPlayerOpti
     {
         return Queue.ShuffleAsync();
     }
-    
-    public void SetLyrics(string? lyrics)
-    {
-        if (CurrentItem is not null)
-            CurrentItem.Lyrics = lyrics;
-    }
 
     public virtual async ValueTask<bool> MoveTrackAsync(int from, int to)
     {
@@ -158,7 +155,7 @@ public abstract class MusicPlayer(IPlayerProperties<MusicPlayer, MusicPlayerOpti
             await PlayAsync(recommendedTracks).ConfigureAwait(false);
         }
     }
-
+    
     private async Task<List<ExtendedTrackItem>> GetRecommendedTrackAsync(int limit = 2)
     {
         var trackIds = GetSeedTrackIds();
@@ -177,7 +174,9 @@ public abstract class MusicPlayer(IPlayerProperties<MusicPlayer, MusicPlayerOpti
         {
             var url = orderedTracks.Skip(i).First(x => Queue.All(y => y.Identifier != x.Id)).ExternalUrls["spotify"];
             var track = await AudioService.Tracks.LoadTrackAsync(url, new TrackLoadOptions { SearchMode = TrackSearchMode.None}).ConfigureAwait(false);
-            recommendedTracks.Add(new ExtendedTrackItem(track!, null));
+            if (track is null)
+                continue;
+            recommendedTracks.Add(new ExtendedTrackItem(track, null));
         }
         
         return recommendedTracks;
@@ -194,16 +193,34 @@ public abstract class MusicPlayer(IPlayerProperties<MusicPlayer, MusicPlayerOpti
         {
             if (index1 < Queue.Count)
             {
-                ids.Add(Queue[index1].Identifier);
+                if (Queue[index1].Track?.SourceName == "spotify")
+                {
+                    ids.Add(Queue[index1].Identifier);
+                    count++;    
+                }
                 index1++;
-                count++;
             }
 
             if (!(index2 < Queue.History?.Count)) continue;
+            if (Queue.History[index2].Track?.SourceName != "spotify")
+            {
+                index2++;
+                continue;
+            }
             ids.Add(Queue.History[index2].Identifier);
             index2++;
             count++;
         }
         return ids;
+    }
+
+    public virtual ValueTask NotifyLyricsLoadedAsync(Lyrics? lyrics, CancellationToken cancellationToken = new())
+    {
+        if (CurrentItem is null || lyrics is null) return ValueTask.CompletedTask;
+        
+        CurrentItem.Lyrics = lyrics.Text.Split("\n").ToImmutableArray();
+        CurrentItem.TimedLyrics = lyrics.TimedLines;
+
+        return ValueTask.CompletedTask;
     }
 }

@@ -27,7 +27,13 @@ public class NowPlayingButtons : ComponentBuilder
             row: 0
         );
         WithButton("Stop", "stop", emote: new Emoji("⏹"), row: 0);
-        WithButton("Next", "skip", emote: new Emoji("⏭"), disabled: !autoPlay && queue.Count == 0, row: 0);
+        WithButton(
+            "Next",
+            "skip",
+            emote: new Emoji("⏭"),
+            disabled: !autoPlay && queue.Count == 0,
+            row: 0
+        );
         WithButton("Down", "volumedown", emote: new Emoji("🔉"), disabled: volume == 0, row: 1);
         WithButton(
             "Loop "
@@ -46,6 +52,12 @@ public class NowPlayingButtons : ComponentBuilder
             "volumeup",
             emote: new Emoji("🔊"),
             disabled: Math.Abs(volume - 0.5f) < 0.01f,
+            row: 1
+        );
+        WithButton(
+            "AutoPlay " + (autoPlay ? "[On]" : "[Off]"),
+            "autoplay",
+            emote: new Emoji("🔄"),
             row: 1
         );
     }

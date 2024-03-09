@@ -121,4 +121,16 @@ public class Interactions : MusicBase
         await player.DisconnectAsync().ConfigureAwait(false);
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
     }
+
+    [ComponentInteraction("autoplay")]
+    public async Task AutoPlayAsync()
+    {
+        await DeferAsync(true).ConfigureAwait(false);
+        var player = await TryGetPlayerAsync().ConfigureAwait(false);
+        if (player is null)
+            return;
+
+        await player.ToggleAutoPlayAsync(Context.User).ConfigureAwait(false);
+        await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
+    }
 }

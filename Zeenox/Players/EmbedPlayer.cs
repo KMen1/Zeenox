@@ -66,6 +66,12 @@ public class EmbedPlayer
         return result;
     }
 
+    protected override async Task ToggleAutoPlayAsync()
+    {
+        await base.ToggleAutoPlayAsync().ConfigureAwait(false);
+        await UpdateMessageAsync().ConfigureAwait(false);
+    }
+
     protected override async ValueTask ShuffleAsync()
     {
         await base.ShuffleAsync().ConfigureAwait(false);
@@ -99,6 +105,7 @@ public class EmbedPlayer
         CancellationToken cancellationToken = new()
     )
     {
+        await base.NotifyTrackStartedAsync(queueItem, cancellationToken).ConfigureAwait(false);
         await UpdateMessageAsync(queueItem as ExtendedTrackItem).ConfigureAwait(false);
     }
 
@@ -108,6 +115,7 @@ public class EmbedPlayer
         CancellationToken cancellationToken = new()
     )
     {
+        await base.NotifyTrackEnqueuedAsync(queueItem, position, cancellationToken).ConfigureAwait(false);
         await UpdateMessageAsync().ConfigureAwait(false);
     }
 

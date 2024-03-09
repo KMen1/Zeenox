@@ -18,6 +18,7 @@ using Serilog.Events;
 using SpotifyAPI.Web;
 using Zeenox;
 using Zeenox.Services;
+using Lavalink4NET.Integrations.LyricsJava.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 var config = builder.Configuration;
@@ -172,7 +173,10 @@ builder.Services
         options.SubstituteApiVersionInUrl = true;
     });
 builder.Services.AddRouting(x => x.LowercaseUrls = true);
+
 var app = builder.Build();
+
+app.UseLyricsJava(x => x.AutoResolve = true);
 
 if (app.Environment.IsDevelopment())
 {

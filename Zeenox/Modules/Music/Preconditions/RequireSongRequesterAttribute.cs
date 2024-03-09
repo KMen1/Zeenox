@@ -15,10 +15,7 @@ public class RequireSongRequesterAttribute : PreconditionAttribute
         var musicService = services.GetRequiredService<MusicService>();
         var player = await musicService.TryGetPlayerAsync(context.Guild.Id).ConfigureAwait(false);
 
-        if (
-            player is not null
-            && player.CurrentItem?.RequestedBy?.Id != context.User.Id
-        )
+        if (player is not null && player.CurrentItem?.RequestedBy?.Id != context.User.Id)
         {
             return PreconditionResult.FromError(
                 "You don't have permission to perfrom this action."
