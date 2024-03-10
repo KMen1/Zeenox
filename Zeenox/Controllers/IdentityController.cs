@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Zeenox.Models;
-using Zeenox.Models.Socket;
 
 namespace Zeenox.Controllers;
 

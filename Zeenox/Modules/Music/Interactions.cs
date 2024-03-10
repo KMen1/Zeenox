@@ -16,7 +16,9 @@ public class Interactions : MusicBase
         await DeferAsync(true).ConfigureAwait(false);
         var player = await TryGetPlayerAsync().ConfigureAwait(false);
         if (player is null)
+        {
             return;
+        }
 
         var volume = (int)(player.Volume * 200);
         volume += 10;
@@ -30,7 +32,9 @@ public class Interactions : MusicBase
         await DeferAsync(true).ConfigureAwait(false);
         var player = await TryGetPlayerAsync().ConfigureAwait(false);
         if (player is null)
+        {
             return;
+        }
 
         var volume = (int)(player.Volume * 200);
         volume -= 10;
@@ -44,7 +48,9 @@ public class Interactions : MusicBase
         await DeferAsync(true).ConfigureAwait(false);
         var player = await TryGetPlayerAsync().ConfigureAwait(false);
         if (player is null)
+        {
             return;
+        }
 
         if (player.State is PlayerState.Paused)
         {
@@ -64,7 +70,9 @@ public class Interactions : MusicBase
         await DeferAsync(true).ConfigureAwait(false);
         var player = await TryGetPlayerAsync().ConfigureAwait(false);
         if (player is null)
+        {
             return;
+        }
 
         await player.SkipAsync(Context.User).ConfigureAwait(false);
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
@@ -76,7 +84,9 @@ public class Interactions : MusicBase
         await DeferAsync(true).ConfigureAwait(false);
         var player = await TryGetPlayerAsync().ConfigureAwait(false);
         if (player is null)
+        {
             return;
+        }
 
         await player.RewindAsync(Context.User).ConfigureAwait(false);
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
@@ -88,12 +98,14 @@ public class Interactions : MusicBase
         await DeferAsync(true).ConfigureAwait(false);
         var player = await TryGetPlayerAsync().ConfigureAwait(false);
         if (player is null)
+        {
             return;
+        }
 
         var shouldDisable = !Enum.IsDefined(typeof(TrackRepeatMode), player.RepeatMode + 1);
         await player
-            .SetRepeatModeAsync(Context.User, shouldDisable ? 0 : player.RepeatMode + 1)
-            .ConfigureAwait(false);
+              .SetRepeatModeAsync(Context.User, shouldDisable ? 0 : player.RepeatMode + 1)
+              .ConfigureAwait(false);
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
     }
 
@@ -103,7 +115,9 @@ public class Interactions : MusicBase
         await DeferAsync(true).ConfigureAwait(false);
         var player = await TryGetPlayerAsync().ConfigureAwait(false);
         if (player is null)
+        {
             return;
+        }
 
         await player.StopAsync(Context.User).ConfigureAwait(false);
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);
@@ -115,7 +129,9 @@ public class Interactions : MusicBase
         await DeferAsync(true).ConfigureAwait(false);
         var player = await TryGetPlayerAsync().ConfigureAwait(false);
         if (player is null)
+        {
             return;
+        }
 
         await player.DeleteNowPlayingMessageAsync().ConfigureAwait(false);
         await player.DisconnectAsync().ConfigureAwait(false);
@@ -128,7 +144,9 @@ public class Interactions : MusicBase
         await DeferAsync(true).ConfigureAwait(false);
         var player = await TryGetPlayerAsync().ConfigureAwait(false);
         if (player is null)
+        {
             return;
+        }
 
         await player.ToggleAutoPlayAsync(Context.User).ConfigureAwait(false);
         await FollowupAsync("✅", ephemeral: true).ConfigureAwait(false);

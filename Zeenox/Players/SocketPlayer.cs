@@ -19,12 +19,12 @@ using Action = Zeenox.Models.Actions.Action;
 
 namespace Zeenox.Players;
 
-public sealed class SocketPlayer
-    (IPlayerProperties<SocketPlayer, SocketPlayerOptions> properties) : LoggedPlayer(properties)
+public sealed class SocketPlayer(IPlayerProperties<SocketPlayer, SocketPlayerOptions> properties)
+    : LoggedPlayer(properties)
 {
-    private readonly ConcurrentDictionary<ulong, WebSocket> _webSockets = new();
     private readonly DatabaseService _dbService = properties.Options.Value.DbService;
     private readonly DiscordSocketClient _discordClient = properties.Options.Value.DiscordClient;
+    private readonly ConcurrentDictionary<ulong, WebSocket> _webSockets = new();
     private ResumeSession? ResumeSession { get; set; } = properties.Options.Value.ResumeSession;
     public bool HasResumeSession => ResumeSession is not null;
     private bool IsRunningUpdatePositionLoop { get; set; }
@@ -53,60 +53,69 @@ public sealed class SocketPlayer
     {
         var result = await base.RemoveAsync(user, index).ConfigureAwait(false);
         if (result)
+        {
             await UpdateSocketsAsync(updateQueue: true).ConfigureAwait(false);
+        }
+
         return result;
     }
 
     public override async ValueTask SeekAsync(IUser user, int position)
     {
         await base.SeekAsync(user, position).ConfigureAwait(false);
-        await UpdateSocketsAsync(updatePlayer: true).ConfigureAwait(false);
+        await UpdateSocketsAsync(true).ConfigureAwait(false);
     }
 
     public override async ValueTask<bool> MoveTrackAsync(int from, int to)
     {
         var result = await base.MoveTrackAsync(from, to).ConfigureAwait(false);
         if (result)
+        {
             await UpdateSocketsAsync(updateQueue: true).ConfigureAwait(false);
+        }
+
         return result;
     }
 
     public override async ValueTask PauseAsync(IUser user)
     {
         await base.PauseAsync(user).ConfigureAwait(false);
-        await UpdateSocketsAsync(updatePlayer: true).ConfigureAwait(false);
+        await UpdateSocketsAsync(true).ConfigureAwait(false);
     }
 
     public override async ValueTask ResumeAsync(IUser user)
     {
         await base.ResumeAsync(user).ConfigureAwait(false);
-        await UpdateSocketsAsync(updatePlayer: true).ConfigureAwait(false);
+        await UpdateSocketsAsync(true).ConfigureAwait(false);
     }
 
     public override async ValueTask<bool> MoveTrackAsync(IUser user, int from, int to)
     {
         var result = await base.MoveTrackAsync(user, from, to).ConfigureAwait(false);
         if (result)
+        {
             await UpdateSocketsAsync(updateQueue: true).ConfigureAwait(false);
+        }
+
         return result;
     }
 
     public override async ValueTask SetVolumeAsync(IUser user, int volume)
     {
         await base.SetVolumeAsync(user, volume).ConfigureAwait(false);
-        await UpdateSocketsAsync(updatePlayer: true).ConfigureAwait(false);
+        await UpdateSocketsAsync(true).ConfigureAwait(false);
     }
 
     public override async Task SetRepeatModeAsync(IUser user, TrackRepeatMode repeatMode)
     {
         await base.SetRepeatModeAsync(user, repeatMode).ConfigureAwait(false);
-        await UpdateSocketsAsync(updatePlayer: true).ConfigureAwait(false);
+        await UpdateSocketsAsync(true).ConfigureAwait(false);
     }
 
     public override async Task CycleRepeatModeAsync(IUser user)
     {
         await base.CycleRepeatModeAsync(user).ConfigureAwait(false);
-        await UpdateSocketsAsync(updatePlayer: true).ConfigureAwait(false);
+        await UpdateSocketsAsync(true).ConfigureAwait(false);
     }
 
     public override async ValueTask ShuffleAsync(IUser user)
@@ -138,14 +147,17 @@ public sealed class SocketPlayer
     public override async Task ToggleAutoPlayAsync(IUser user)
     {
         await base.ToggleAutoPlayAsync(user).ConfigureAwait(false);
-        await UpdateSocketsAsync(updatePlayer: true).ConfigureAwait(false);
+        await UpdateSocketsAsync(true).ConfigureAwait(false);
     }
 
     protected override async ValueTask<bool> SkipToAsync(int index)
     {
         var result = await base.SkipToAsync(index).ConfigureAwait(false);
         if (result)
+        {
             await UpdateSocketsAsync(updateQueue: true).ConfigureAwait(false);
+        }
+
         return result;
     }
 
@@ -153,7 +165,10 @@ public sealed class SocketPlayer
     {
         var result = await base.RemoveAtAsync(user, index).ConfigureAwait(false);
         if (result)
+        {
             await UpdateSocketsAsync(updateQueue: true).ConfigureAwait(false);
+        }
+
         return result;
     }
 
@@ -162,12 +177,18 @@ public sealed class SocketPlayer
         RemoveSocket(userId);
         _webSockets.TryAdd(userId, socket);
         if (!IsRunningUpdatePositionLoop)
+        {
             _ = UpdatePositionLoopAsync();
+        }
     }
-    
+
     private void RemoveSocket(ulong userId)
     {
-        if (!_webSockets.ContainsKey(userId)) return;
+        if (!_webSockets.ContainsKey(userId))
+        {
+            return;
+        }
+
         _webSockets.TryRemove(userId, out _);
     }
 
@@ -180,15 +201,18 @@ public sealed class SocketPlayer
             {
                 if (State is PlayerState.Playing && socket.State == WebSocketState.Open)
                 {
-                    await socket.SendTextAsync(JsonSerializer.Serialize(new Payload(PayloadType.UpdatePlayer))).ConfigureAwait(false);
+                    await socket.SendTextAsync(JsonSerializer.Serialize(new Payload(PayloadType.UpdatePlayer)))
+                                .ConfigureAwait(false);
                 }
                 else if (socket.State is WebSocketState.Closed or WebSocketState.Aborted)
                 {
                     RemoveSocket(userId);
                 }
             }
+
             await Task.Delay(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
         }
+
         IsRunningUpdatePositionLoop = false;
     }
 
@@ -200,50 +224,66 @@ public sealed class SocketPlayer
     )
     {
         if (_webSockets.IsEmpty)
+        {
             return;
+        }
 
         foreach (var (_, socket) in _webSockets)
         {
             if (socket.State != WebSocketState.Open)
+            {
                 continue;
-            await socket.SendSocketMessagesAsync(updatePlayer, updateTrack, updateQueue, updateActions).ConfigureAwait(false);
+            }
+
+            await socket.SendSocketMessagesAsync(updatePlayer, updateTrack, updateQueue, updateActions)
+                        .ConfigureAwait(false);
         }
     }
 
     public async Task ResumeSessionAsync(IUser user)
     {
         if (ResumeSession is null)
+        {
             return;
-        
+        }
+
         var newRequester = _discordClient.GetUser(ResumeSession.CurrentTrack.RequesterId.GetValueOrDefault());
-        var newCurrentTrack = new ExtendedTrackItem(LavalinkTrack.Parse(ResumeSession.CurrentTrack.Id, null), newRequester);
-        var queue = ResumeSession.Queue.Select(x => new ExtendedTrackItem(LavalinkTrack.Parse(x.Id, null), newRequester)).ToList();
+        var newCurrentTrack =
+            new ExtendedTrackItem(LavalinkTrack.Parse(ResumeSession.CurrentTrack.Id, null), newRequester);
+        var queue = ResumeSession.Queue
+                                 .Select(x => new ExtendedTrackItem(LavalinkTrack.Parse(x.Id, null), newRequester))
+                                 .ToList();
 
         if (queue.Count > 0)
         {
             await Queue.AddRangeAsync(queue).ConfigureAwait(false);
             await AddActionAsync(new EnqueuePlaylistAction(user, null, queue)).ConfigureAwait(false);
         }
+
         await PlayAsync(user, newCurrentTrack, false).ConfigureAwait(false);
         await _dbService.DeleteResumeSessionAsync(GuildId).ConfigureAwait(false);
         ResumeSession = null;
     }
-    
+
     public void RemoveResumeSession()
     {
         ResumeSession = null;
     }
-    
+
     protected override async ValueTask DisposeAsyncCore()
     {
         foreach (var (_, socket) in _webSockets)
         {
             if (socket.State != WebSocketState.Open)
+            {
                 continue;
-            await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Disposed", CancellationToken.None).ConfigureAwait(false);
+            }
+
+            await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Disposed", CancellationToken.None)
+                        .ConfigureAwait(false);
             socket.Dispose();
         }
-        
+
         if (Queue.Count > 0)
         {
             var resumeSession = new ResumeSession(this);
@@ -254,22 +294,24 @@ public sealed class SocketPlayer
     }
 
     protected override async ValueTask NotifyTrackStartedAsync(ITrackQueueItem queueItem,
-        CancellationToken cancellationToken = new())
+                                                               CancellationToken cancellationToken = new())
     {
         await base.NotifyTrackStartedAsync(queueItem, cancellationToken).ConfigureAwait(false);
         await UpdateSocketsAsync(updateTrack: true, updateQueue: true, updatePlayer: true).ConfigureAwait(false);
     }
 
-    protected override async ValueTask NotifyTrackEndedAsync(ITrackQueueItem queueItem, TrackEndReason endReason,
-        CancellationToken cancellationToken = new())
+    protected override async ValueTask NotifyTrackEndedAsync(ITrackQueueItem queueItem,
+                                                             TrackEndReason endReason,
+                                                             CancellationToken cancellationToken = new())
     {
         await base.NotifyTrackEndedAsync(queueItem, endReason, cancellationToken).ConfigureAwait(false);
         var task = Queue.Count == 0 ? UpdateSocketsAsync(true, true, true) : Task.CompletedTask;
         await task.ConfigureAwait(false);
     }
 
-    protected override async ValueTask NotifyTrackEnqueuedAsync(ITrackQueueItem queueItem, int position,
-        CancellationToken cancellationToken = new())
+    protected override async ValueTask NotifyTrackEnqueuedAsync(ITrackQueueItem queueItem,
+                                                                int position,
+                                                                CancellationToken cancellationToken = new())
     {
         await base.NotifyTrackEnqueuedAsync(queueItem, position, cancellationToken).ConfigureAwait(false);
         await UpdateSocketsAsync(updateQueue: true).ConfigureAwait(false);

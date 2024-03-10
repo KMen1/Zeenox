@@ -7,8 +7,5 @@ public class VolumeAction(IUser user, int volume, ActionType type) : Action(user
 {
     public int Volume { get; } = volume;
 
-    public override string Stringify()
-    {
-        return $"set volume to {Volume}%";
-    }
+    public override string Stringify() => $"set volume to {Volume}%";
 }

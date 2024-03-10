@@ -37,12 +37,12 @@ public class NowPlayingButtons : ComponentBuilder
         WithButton("Down", "volumedown", emote: new Emoji("🔉"), disabled: volume == 0, row: 1);
         WithButton(
             "Loop "
-                + loopMode switch
-                {
-                    TrackRepeatMode.Track => "[Track]",
-                    TrackRepeatMode.Queue => "[Queue]",
-                    _ => "[Off]"
-                },
+            + loopMode switch
+            {
+                TrackRepeatMode.Track => "[Track]",
+                TrackRepeatMode.Queue => "[Queue]",
+                _ => "[Off]"
+            },
             "loop",
             emote: new Emoji("🔁"),
             row: 1

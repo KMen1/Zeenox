@@ -16,12 +16,15 @@ public class NowPlayingEmbed : EmbedBuilder
         Color = new Color(31, 31, 31);
         ImageUrl = trackItem.ArtworkUri;
         Footer = new EmbedFooterBuilder()
-            .WithIconUrl(trackItem.RequestedBy?.GetAvatarUrl())
-            .WithText(
-                $"Added by {trackItem.RequestedBy?.Username ?? "Autoplay"} | Length: {track.Duration.ToTimeString()} | Volume: {Math.Round(volume * 200)}%"
-            );
+                 .WithIconUrl(trackItem.RequestedBy?.GetAvatarUrl())
+                 .WithText(
+                     $"Added by {trackItem.RequestedBy?.Username ?? "Autoplay"} | Length: {track.Duration.ToTimeString()} | Volume: {Math.Round(volume * 200)}%"
+                 );
         if (queue.Count <= 0)
+        {
             return;
+        }
+
         var sb = new StringBuilder();
         var counter = 1;
         var tracks = queue.Take(5);
@@ -33,7 +36,9 @@ public class NowPlayingEmbed : EmbedBuilder
         }
 
         if (queue.Count > 5)
+        {
             sb.AppendLine($"`and {queue.Count - 5} more...`");
+        }
 
         AddField("📃 Upcoming", $"{sb.ToString().TrimEnd('\r', '\n')}");
     }

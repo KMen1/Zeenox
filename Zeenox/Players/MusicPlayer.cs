@@ -22,12 +22,27 @@ public abstract class MusicPlayer(IPlayerProperties<MusicPlayer, MusicPlayerOpti
     private IAudioService AudioService => properties.Options.Value.AudioService;
     private string SpotifyMarket => properties.Options.Value.SpotifyMarket;
 
+    public virtual ValueTask NotifyLyricsLoadedAsync(Lyrics? lyrics, CancellationToken cancellationToken = new())
+    {
+        if (CurrentItem is null || lyrics is null)
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        CurrentItem.Lyrics = lyrics.Text.Split("\n").ToImmutableArray();
+        CurrentItem.TimedLyrics = lyrics.TimedLines;
+
+        return ValueTask.CompletedTask;
+    }
+
     protected virtual async Task<int> PlayAsync(IEnumerable<ExtendedTrackItem> tracksEnumerable)
     {
         var tracks = tracksEnumerable.ToArray();
         if (tracks.Length == 0)
+        {
             return 0;
-        
+        }
+
         if (CurrentItem is not null)
         {
             await PlayAsync(tracks[0]).ConfigureAwait(false);
@@ -40,19 +55,22 @@ public abstract class MusicPlayer(IPlayerProperties<MusicPlayer, MusicPlayerOpti
         return 0;
     }
 
-    protected virtual ValueTask SetVolumeAsync(int volume)
-    {
-        return SetVolumeAsync((float)Math.Floor(volume / (double)2) / 100f);
-    }
+    protected virtual ValueTask SetVolumeAsync(int volume) =>
+        SetVolumeAsync((float)Math.Floor(volume / (double)2) / 100f);
 
     protected virtual async ValueTask<ExtendedTrackItem?> RewindAsync()
     {
         if (!Queue.HasHistory)
+        {
             return null;
+        }
 
         var track = Queue.History.LastOrDefault();
         if (track is not ExtendedTrackItem trackItem)
+        {
             return null;
+        }
+
         await Queue.History.RemoveAtAsync(Queue.History.Count - 1).ConfigureAwait(false);
         await PlayAsync(trackItem, false).ConfigureAwait(false);
         return trackItem;
@@ -63,7 +81,7 @@ public abstract class MusicPlayer(IPlayerProperties<MusicPlayer, MusicPlayerOpti
         RepeatMode = repeatMode;
         return Task.CompletedTask;
     }
-    
+
     protected virtual Task ToggleAutoPlayAsync()
     {
         IsAutoPlayEnabled = !IsAutoPlayEnabled;
@@ -77,30 +95,20 @@ public abstract class MusicPlayer(IPlayerProperties<MusicPlayer, MusicPlayerOpti
         return Task.CompletedTask;
     }
 
-    public override ValueTask PauseAsync(CancellationToken cancellationToken = new())
-    {
-        return State == PlayerState.Paused ? base.ResumeAsync(cancellationToken) : base.PauseAsync(cancellationToken);
-    }
+    public override ValueTask PauseAsync(CancellationToken cancellationToken = new()) => State == PlayerState.Paused
+        ? base.ResumeAsync(cancellationToken)
+        : base.PauseAsync(cancellationToken);
 
-    public override ValueTask ResumeAsync(CancellationToken cancellationToken = new())
-    {
-        return State == PlayerState.Paused ? base.ResumeAsync(cancellationToken) : base.PauseAsync(cancellationToken);
-    }
+    public override ValueTask ResumeAsync(CancellationToken cancellationToken = new()) => State == PlayerState.Paused
+        ? base.ResumeAsync(cancellationToken)
+        : base.PauseAsync(cancellationToken);
 
-    protected virtual ValueTask<int> ClearQueueAsync()
-    {
-        return Queue.ClearAsync();
-    }
+    protected virtual ValueTask<int> ClearQueueAsync() => Queue.ClearAsync();
 
-    protected virtual ValueTask<int> DistinctQueueAsync()
-    {
-        return Queue.DistinctAsync();
-    }
+    protected virtual ValueTask<int> DistinctQueueAsync() => Queue.DistinctAsync();
 
-    protected virtual ValueTask SeekAsync(int position)
-    {
-        return SeekAsync(TimeSpan.FromSeconds(position), CancellationToken.None);
-    }
+    protected virtual ValueTask SeekAsync(int position) =>
+        SeekAsync(TimeSpan.FromSeconds(position), CancellationToken.None);
 
     protected virtual async Task ReverseQueueAsync()
     {
@@ -112,7 +120,9 @@ public abstract class MusicPlayer(IPlayerProperties<MusicPlayer, MusicPlayerOpti
     protected virtual async ValueTask<bool> SkipToAsync(int index)
     {
         if (index < 0 || index >= Queue.Count)
+        {
             return false;
+        }
 
         var track = Queue[index];
         await Queue.RemoveRangeAsync(0, index + 1).ConfigureAwait(false);
@@ -120,23 +130,21 @@ public abstract class MusicPlayer(IPlayerProperties<MusicPlayer, MusicPlayerOpti
         return true;
     }
 
-    protected virtual ValueTask<bool> RemoveAtAsync(int index)
-    {
-        return Queue.RemoveAtAsync(index);
-    }
+    protected virtual ValueTask<bool> RemoveAtAsync(int index) => Queue.RemoveAtAsync(index);
 
-    protected virtual ValueTask ShuffleAsync()
-    {
-        return Queue.ShuffleAsync();
-    }
+    protected virtual ValueTask ShuffleAsync() => Queue.ShuffleAsync();
 
     public virtual async ValueTask<bool> MoveTrackAsync(int from, int to)
     {
         if (from < 0 || from >= Queue.Count)
+        {
             return false;
+        }
 
         if (to < 0 || to >= Queue.Count)
+        {
             return false;
+        }
 
         var track = Queue[from];
         await Queue.RemoveAtAsync(from).ConfigureAwait(false);
@@ -144,41 +152,49 @@ public abstract class MusicPlayer(IPlayerProperties<MusicPlayer, MusicPlayerOpti
         return true;
     }
 
-    protected override async ValueTask NotifyTrackEndedAsync(ITrackQueueItem queueItem, TrackEndReason endReason,
-        CancellationToken cancellationToken = new ())
+    protected override async ValueTask NotifyTrackEndedAsync(ITrackQueueItem queueItem,
+                                                             TrackEndReason endReason,
+                                                             CancellationToken cancellationToken = new())
     {
         await base.NotifyTrackEndedAsync(queueItem, endReason, cancellationToken).ConfigureAwait(false);
-        
+
         if (IsAutoPlayEnabled && Queue.Count < 2 && RepeatMode == TrackRepeatMode.None)
         {
-            var recommendedTracks = await GetRecommendedTrackAsync(CurrentItem is null ? 3 : 2 - Queue.Count).ConfigureAwait(false);
+            var recommendedTracks = await GetRecommendedTrackAsync(CurrentItem is null ? 3 : 2 - Queue.Count)
+                .ConfigureAwait(false);
             await PlayAsync(recommendedTracks).ConfigureAwait(false);
         }
     }
-    
+
     private async Task<List<ExtendedTrackItem>> GetRecommendedTrackAsync(int limit = 2)
     {
         var trackIds = GetSeedTrackIds();
         var request = new RecommendationsRequest
         {
-            Market = SpotifyMarket,
+            Market = SpotifyMarket
         };
         request.SeedTracks.AddRange(trackIds);
         request.Min.Add("popularity", "50");
-        
+
         var response = await SpotifyClient.Browse.GetRecommendations(request).ConfigureAwait(false);
         var orderedTracks = response.Tracks.OrderByDescending(x => x.Popularity).ToList();
-        
+
         var recommendedTracks = new List<ExtendedTrackItem>();
         for (var i = 0; i < limit; i++)
         {
             var url = orderedTracks.Skip(i).First(x => Queue.All(y => y.Identifier != x.Id)).ExternalUrls["spotify"];
-            var track = await AudioService.Tracks.LoadTrackAsync(url, new TrackLoadOptions { SearchMode = TrackSearchMode.None}).ConfigureAwait(false);
+            var track = await AudioService.Tracks
+                                          .LoadTrackAsync(
+                                              url, new TrackLoadOptions { SearchMode = TrackSearchMode.None })
+                                          .ConfigureAwait(false);
             if (track is null)
+            {
                 continue;
+            }
+
             recommendedTracks.Add(new ExtendedTrackItem(track, null));
         }
-        
+
         return recommendedTracks;
     }
 
@@ -196,31 +212,28 @@ public abstract class MusicPlayer(IPlayerProperties<MusicPlayer, MusicPlayerOpti
                 if (Queue[index1].Track?.SourceName == "spotify")
                 {
                     ids.Add(Queue[index1].Identifier);
-                    count++;    
+                    count++;
                 }
+
                 index1++;
             }
 
-            if (!(index2 < Queue.History?.Count)) continue;
+            if (!(index2 < Queue.History?.Count))
+            {
+                continue;
+            }
+
             if (Queue.History[index2].Track?.SourceName != "spotify")
             {
                 index2++;
                 continue;
             }
+
             ids.Add(Queue.History[index2].Identifier);
             index2++;
             count++;
         }
+
         return ids;
-    }
-
-    public virtual ValueTask NotifyLyricsLoadedAsync(Lyrics? lyrics, CancellationToken cancellationToken = new())
-    {
-        if (CurrentItem is null || lyrics is null) return ValueTask.CompletedTask;
-        
-        CurrentItem.Lyrics = lyrics.Text.Split("\n").ToImmutableArray();
-        CurrentItem.TimedLyrics = lyrics.TimedLines;
-
-        return ValueTask.CompletedTask;
     }
 }

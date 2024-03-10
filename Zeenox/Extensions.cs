@@ -15,12 +15,10 @@ namespace Zeenox;
 
 public static class Extensions
 {
-    public static string ToTimeString(this TimeSpan timeSpan)
-    {
-        return timeSpan.TotalHours < 1
+    public static string ToTimeString(this TimeSpan timeSpan) =>
+        timeSpan.TotalHours < 1
             ? timeSpan.ToString(@"mm\:ss")
             : timeSpan.ToString(timeSpan.TotalDays < 1 ? @"hh\:mm\:ss" : @"dd\:hh\:mm\:ss");
-    }
 
     public static bool TryGetUserId(
         this ClaimsIdentity? claimsPrincipal,
@@ -62,15 +60,13 @@ public static class Extensions
         return result;
     }
 
-    public static Task SendTextAsync(this WebSocket socket, string text)
-    {
-        return socket.SendAsync(
+    public static Task SendTextAsync(this WebSocket socket, string text) =>
+        socket.SendAsync(
             Encoding.UTF8.GetBytes(text).ToArray(),
             WebSocketMessageType.Text,
             true,
             CancellationToken.None
         );
-    }
 
     public static async Task SendSocketMessagesAsync(
         this WebSocket socket,
@@ -85,24 +81,27 @@ public static class Extensions
         {
             type |= PayloadType.UpdatePlayer;
         }
+
         if (updateTrack)
         {
             type |= PayloadType.UpdateTrack;
         }
+
         if (updateQueue)
         {
             type |= PayloadType.UpdateQueue;
         }
+
         if (updateActions)
         {
             type |= PayloadType.UpdateActions;
         }
-        
+
         Log.Logger.Debug("Sending socket message with type {Type}", type.ToString());
 
         await socket
-            .SendTextAsync(JsonSerializer.Serialize(new Payload(type)))
-            .ConfigureAwait(false);
+              .SendTextAsync(JsonSerializer.Serialize(new Payload(type)))
+              .ConfigureAwait(false);
     }
 
     public static bool IsUserListening(this SocketPlayer player, IUser user)
@@ -127,7 +126,7 @@ public static class Extensions
             }
         }
     }
-    
+
     public static List<string> GetAllText(this HtmlNode node)
     {
         List<string> texts = [];
@@ -138,7 +137,8 @@ public static class Extensions
             {
                 child = child.NextSibling;
                 continue;
-            } 
+            }
+
             if (child.NodeType is HtmlNodeType.Text)
             {
                 texts.Add(WebUtility.HtmlDecode(child.InnerText));
@@ -147,13 +147,14 @@ public static class Extensions
             {
                 texts.AddRange(GetAllText(child));
             }
+
             child = child.NextSibling;
         }
 
         return CombineStringsInParentheses(CombineStringsInParentheses(texts), '[', ']');
     }
 
-    private static List<string> CombineStringsInParentheses(List<string> input, char open = '(', char close = ')' )
+    private static List<string> CombineStringsInParentheses(List<string> input, char open = '(', char close = ')')
     {
         var combinedStrings = new List<string>();
         var currentCombinedString = "";
@@ -165,7 +166,7 @@ public static class Extensions
                 combinedStrings.Add(str);
                 continue;
             }
-            
+
             if (currentCombinedString is not "")
             {
                 if (str.Contains(close))

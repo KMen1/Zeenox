@@ -7,5 +7,5 @@ public enum PayloadType
     UpdatePlayer = 1,
     UpdateQueue = 2,
     UpdateTrack = 4,
-    UpdateActions = 8,
+    UpdateActions = 8
 }

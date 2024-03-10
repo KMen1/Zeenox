@@ -24,17 +24,17 @@ public sealed class InteractionHandler(
 
         await Client.WaitForReadyAsync(stoppingToken).ConfigureAwait(false);
         await Client
-            .SetGameAsync(
-                config["Discord:Activity"] ?? throw new Exception("Discord activity not set!"),
-                type: ActivityType.Listening
-            )
-            .ConfigureAwait(false);
+              .SetGameAsync(
+                  config["Discord:Activity"] ?? throw new Exception("Discord activity not set!"),
+                  type: ActivityType.Listening
+              )
+              .ConfigureAwait(false);
         await interactionService
-            .AddModulesAsync(Assembly.GetEntryAssembly(), provider)
-            .ConfigureAwait(false);
+              .AddModulesAsync(Assembly.GetEntryAssembly(), provider)
+              .ConfigureAwait(false);
         await interactionService
-            .AddModulesGloballyAsync(true, interactionService.Modules.ToArray())
-            .ConfigureAwait(false);
+              .AddModulesGloballyAsync(true, interactionService.Modules.ToArray())
+              .ConfigureAwait(false);
     }
 
     private static Task HandleComponentCommandResultAsync(
@@ -44,7 +44,9 @@ public sealed class InteractionHandler(
     )
     {
         if (result.IsSuccess || result.Error == InteractionCommandError.UnknownCommand)
+        {
             return Task.CompletedTask;
+        }
 
         var reason = GetErrorReason(result);
         return SendErrorMessageAsync(reason, context.Interaction);
@@ -57,7 +59,9 @@ public sealed class InteractionHandler(
     )
     {
         if (result.IsSuccess || result.Error == InteractionCommandError.UnknownCommand)
+        {
             return Task.CompletedTask;
+        }
 
         var reason = GetErrorReason(result);
         return SendErrorMessageAsync(reason, context.Interaction, result.ErrorReason);
@@ -88,7 +92,9 @@ public sealed class InteractionHandler(
     {
         var embed = new EmbedBuilder().WithColor(Color.Red).WithTitle(reason);
         if (description is not null)
+        {
             embed.WithDescription($"```{description}```");
+        }
 
         return interaction.HasResponded
             ? interaction.FollowupAsync(embed: embed.Build(), ephemeral: true)

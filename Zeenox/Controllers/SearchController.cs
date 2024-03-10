@@ -18,13 +18,21 @@ public class SearchController(IAudioService audioService) : ControllerBase
     [HttpGet]
     public async Task<IActionResult> SearchAsync(string query)
     {
-        var result = await audioService.Tracks.LoadTracksAsync(query, new TrackLoadOptions(TrackSearchMode.Spotify, StrictSearchBehavior.Throw)).ConfigureAwait(false);
+        var result = await audioService.Tracks
+                                       .LoadTracksAsync(
+                                           query,
+                                           new TrackLoadOptions(TrackSearchMode.Spotify, StrictSearchBehavior.Throw))
+                                       .ConfigureAwait(false);
         if (!result.IsSuccess)
+        {
             return NotFound();
+        }
 
         if (!result.HasMatches)
+        {
             return NotFound();
-        
+        }
+
         return Content(JsonConvert.SerializeObject(new SearchResultDTO(result)));
     }
 }

@@ -16,9 +16,9 @@ namespace Zeenox.Controllers;
 [ApiVersion("1.0")]
 public class SocketController : ControllerBase
 {
-    private readonly MusicService _musicService;
-    private readonly DiscordSocketClient _client;
     private static SymmetricSecurityKey _securityKey = null!;
+    private readonly DiscordSocketClient _client;
+    private readonly MusicService _musicService;
 
     public SocketController(
         MusicService musicService,
@@ -45,30 +45,38 @@ public class SocketController : ControllerBase
         }
 
         using var webSocket = await HttpContext.WebSockets
-            .AcceptWebSocketAsync()
-            .ConfigureAwait(false);
+                                               .AcceptWebSocketAsync()
+                                               .ConfigureAwait(false);
         await HandleSocketAsync(webSocket).ConfigureAwait(false);
     }
 
     private async Task HandleSocketAsync(WebSocket socket)
     {
         if (socket.CloseStatus.HasValue)
+        {
             return;
+        }
 
         var buffer = new byte[1024 * 4];
         var receiveResult = await socket
-            .ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None)
-            .ConfigureAwait(false);
+                                  .ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None)
+                                  .ConfigureAwait(false);
 
         var jwt = Encoding.UTF8.GetString(buffer, 0, receiveResult.Count);
         if (string.IsNullOrWhiteSpace(jwt))
+        {
             return;
+        }
 
         if (!TryGetClaims(jwt, out var claims))
+        {
             return;
+        }
 
         if (!claims.TryGetGuildId(out var guildId) || !claims.TryGetUserId(out var userId))
+        {
             return;
+        }
 
         var player = await _musicService.TryGetPlayerAsync(guildId.Value).ConfigureAwait(false);
         if (player is null)
@@ -76,13 +84,17 @@ public class SocketController : ControllerBase
             var user = _client.GetGuild(guildId.Value).GetUser(userId.Value);
             var voiceChannel = user.VoiceChannel;
             if (voiceChannel is null)
+            {
                 return;
+            }
 
             player = await _musicService
-                .TryCreatePlayerAsync(guildId.Value, voiceChannel)
-                .ConfigureAwait(false);
+                           .TryCreatePlayerAsync(guildId.Value, voiceChannel)
+                           .ConfigureAwait(false);
             if (player is null)
+            {
                 return;
+            }
         }
 
         player.RegisterSocket(userId.Value, socket);
@@ -93,14 +105,14 @@ public class SocketController : ControllerBase
     {
         var buffer = new byte[1024 * 4];
         var result = await socket
-            .ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None)
-            .ConfigureAwait(false);
+                           .ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None)
+                           .ConfigureAwait(false);
 
         while (!result.CloseStatus.HasValue)
         {
             result = await socket
-                .ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None)
-                .ConfigureAwait(false);
+                           .ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None)
+                           .ConfigureAwait(false);
         }
 
         if (
@@ -109,12 +121,12 @@ public class SocketController : ControllerBase
         )
         {
             await socket
-                .CloseAsync(
-                    WebSocketCloseStatus.NormalClosure,
-                    "Closed by the client",
-                    CancellationToken.None
-                )
-                .ConfigureAwait(false);
+                  .CloseAsync(
+                      WebSocketCloseStatus.NormalClosure,
+                      "Closed by the client",
+                      CancellationToken.None
+                  )
+                  .ConfigureAwait(false);
         }
     }
 

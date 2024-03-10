@@ -15,32 +15,38 @@ public class SearchAutocompleteHandler(IAudioService audioService) : Autocomplet
     )
     {
         if (autocompleteInteraction.Data.Current.Value is not string query || query.Length < 3)
+        {
             return AutocompletionResult.FromSuccess();
+        }
 
         if (Uri.IsWellFormedUriString(query, UriKind.Absolute))
+        {
             return AutocompletionResult.FromSuccess();
+        }
 
         var results = await audioService.Tracks
-            .LoadTracksAsync(
-                query,
-                new TrackLoadOptions(TrackSearchMode.Spotify, StrictSearchBehavior.Throw)
-            )
-            .ConfigureAwait(false);
+                                        .LoadTracksAsync(
+                                            query,
+                                            new TrackLoadOptions(TrackSearchMode.Spotify, StrictSearchBehavior.Throw)
+                                        )
+                                        .ConfigureAwait(false);
 
         if (!results.HasMatches)
+        {
             return AutocompletionResult.FromSuccess();
+        }
 
         var tracks = results.Tracks.Take(10).Where(x => x.Uri is not null).ToArray();
 
         var options = tracks
-            .Select(x =>
-            {
-                var title = $"{x.Title} by {x.Author}";
-                return title.Length > 100
-                    ? new AutocompleteResult(title[..99], x.Uri!.ToString())
-                    : new AutocompleteResult(title, x.Uri!.ToString());
-            })
-            .ToArray();
+                      .Select(x =>
+                      {
+                          var title = $"{x.Title} by {x.Author}";
+                          return title.Length > 100
+                              ? new AutocompleteResult(title[..99], x.Uri!.ToString())
+                              : new AutocompleteResult(title, x.Uri!.ToString());
+                      })
+                      .ToArray();
 
         return AutocompletionResult.FromSuccess(options);
     }

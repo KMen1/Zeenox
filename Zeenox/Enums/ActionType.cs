@@ -13,5 +13,5 @@ public enum ActionType
     VolumeUp,
     VolumeDown,
     ChangeLoopMode,
-    ToggleAutoPlay,
+    ToggleAutoPlay
 }

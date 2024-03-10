@@ -15,6 +15,14 @@ namespace Zeenox.Modules.Music.Preconditions;
 
 public class RateLimit : PreconditionAttribute
 {
+    public enum RateLimitType
+    {
+        User,
+        Channel,
+        Guild,
+        Global
+    }
+
     public static ConcurrentDictionary<ulong, List<RateLimitItem>> Items = new();
     private static DateTime _removeExpiredCommandsTime = DateTime.MinValue;
     private readonly RateLimitType _context;
@@ -63,13 +71,17 @@ public class RateLimit : PreconditionAttribute
         var commands = target.Where(a => a.Command == contextId);
 
         foreach (var c in commands.ToList())
+        {
             if (dateTime >= c.ExpireAt)
+            {
                 target.Remove(c);
+            }
+        }
 
         if (commands.Count() < _requests)
         {
             target.Add(
-                new RateLimitItem()
+                new RateLimitItem
                 {
                     Command = contextId,
                     ExpireAt = DateTime.UtcNow + TimeSpan.FromSeconds(_seconds)
@@ -91,7 +103,9 @@ public class RateLimit : PreconditionAttribute
         {
             var utcTime = DateTime.UtcNow;
             foreach (var command in doc.Value.Where(a => utcTime > a.ExpireAt).ToList())
+            {
                 doc.Value.Remove(command);
+            }
         }
 
         return Task.CompletedTask;
@@ -101,13 +115,5 @@ public class RateLimit : PreconditionAttribute
     {
         public string Command { get; set; } = null!;
         public DateTime ExpireAt { get; set; }
-    }
-
-    public enum RateLimitType
-    {
-        User,
-        Channel,
-        Guild,
-        Global
     }
 }

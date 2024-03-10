@@ -16,7 +16,8 @@ namespace Zeenox.Controllers;
 [ProducesResponseType(StatusCodes.Status401Unauthorized)]
 [Route("api/v{version:apiVersion}/[controller]")]
 [ApiVersion("1.0")]
-public class GuildsController(DiscordSocketClient client, DatabaseService databaseService, MusicService musicService) : ControllerBase
+public class GuildsController(DiscordSocketClient client, DatabaseService databaseService, MusicService musicService)
+    : ControllerBase
 {
     [Route("available")]
     [HttpGet]
@@ -31,16 +32,16 @@ public class GuildsController(DiscordSocketClient client, DatabaseService databa
         var guilds = client.Guilds.Where(
             x =>
                 x.Users.Select(y => y.Id).Contains(userId.Value)
+
             //&& x.Users.First(z => z.Id == userId).GuildPermissions.ManageGuild
         ).ToList();
-
-
 
         var guildsList = new List<SocketGuildDTO>();
 
         foreach (var guild in guilds)
         {
-            var voiceChannel = guild.VoiceChannels.FirstOrDefault(x => x.ConnectedUsers.Any(y => y.Id == client.CurrentUser.Id));
+            var voiceChannel =
+                guild.VoiceChannels.FirstOrDefault(x => x.ConnectedUsers.Any(y => y.Id == client.CurrentUser.Id));
             var resumeSession = await databaseService.GetResumeSessionAsync(guild.Id).ConfigureAwait(false);
             var player = await musicService.TryGetPlayerAsync(guild.Id).ConfigureAwait(false);
             var trackDto = player?.CurrentItem is not null ? new TrackDTO(player.CurrentItem) : null;
@@ -62,10 +63,12 @@ public class GuildsController(DiscordSocketClient client, DatabaseService databa
         }
 
         var resumeSession = await databaseService.GetResumeSessionAsync(id).ConfigureAwait(false);
-        var voiceChannel = guild.VoiceChannels.FirstOrDefault(x => x.ConnectedUsers.Any(y => y.Id == client.CurrentUser.Id));
+        var voiceChannel =
+            guild.VoiceChannels.FirstOrDefault(x => x.ConnectedUsers.Any(y => y.Id == client.CurrentUser.Id));
         var resumeSessionDto = resumeSession is null ? null : new ResumeSessionDTO(resumeSession, client);
         var player = await musicService.TryGetPlayerAsync(guild.Id).ConfigureAwait(false);
         var trackDto = player?.CurrentItem is not null ? new TrackDTO(player.CurrentItem) : null;
-        return Ok(JsonConvert.SerializeObject(new SocketGuildDTO(guild, trackDto, voiceChannel?.Name, resumeSessionDto)));
+        return Ok(
+            JsonConvert.SerializeObject(new SocketGuildDTO(guild, trackDto, voiceChannel?.Name, resumeSessionDto)));
     }
 }

@@ -20,12 +20,11 @@ public class ErrorHandlingMiddleware(RequestDelegate next)
             {
                 return;
             }
-            
+
             var result = JsonSerializer.Serialize(new { message = error.Message });
             response.ContentType = "application/json";
             response.StatusCode = (int)HttpStatusCode.InternalServerError;
             await response.WriteAsync(result).ConfigureAwait(false);
-            
         }
     }
 }

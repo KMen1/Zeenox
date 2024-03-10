@@ -6,8 +6,7 @@ using Zeenox.Models.Player;
 
 namespace Zeenox.Players;
 
-public class EmbedPlayer
-    (IPlayerProperties<MusicPlayer, EmbedPlayerOptions> properties) : MusicPlayer(properties)
+public class EmbedPlayer(IPlayerProperties<MusicPlayer, EmbedPlayerOptions> properties) : MusicPlayer(properties)
 {
     private ITextChannel? TextChannel { get; } = properties.Options.Value.TextChannel;
     public SocketVoiceChannel VoiceChannel { get; } = properties.Options.Value.VoiceChannel;
@@ -55,7 +54,10 @@ public class EmbedPlayer
     {
         var result = await base.SkipToAsync(index).ConfigureAwait(false);
         if (result)
+        {
             await UpdateMessageAsync().ConfigureAwait(false);
+        }
+
         return result;
     }
 
@@ -82,7 +84,10 @@ public class EmbedPlayer
     {
         var result = await base.MoveTrackAsync(from, to).ConfigureAwait(false);
         if (result)
+        {
             await UpdateMessageAsync().ConfigureAwait(false);
+        }
+
         return result;
     }
 
@@ -122,8 +127,10 @@ public class EmbedPlayer
     private async Task UpdateMessageAsync(ExtendedTrackItem? track = null)
     {
         if (TextChannel is null)
+        {
             return;
-        
+        }
+
         var actualTrack = track ?? CurrentItem;
         var eb = GetEmbedBuilder(actualTrack);
         var cb = GetButtons(actualTrack);
@@ -134,18 +141,18 @@ public class EmbedPlayer
         )
         {
             NowPlayingMessage = await TextChannel
-                .SendMessageAsync(embed: eb.Build(), components: cb.Build())
-                .ConfigureAwait(false);
+                                      .SendMessageAsync(embed: eb.Build(), components: cb.Build())
+                                      .ConfigureAwait(false);
         }
         else
         {
             await NowPlayingMessage
-                .ModifyAsync(x =>
-                {
-                    x.Embed = eb.Build();
-                    x.Components = cb.Build();
-                })
-                .ConfigureAwait(false);
+                  .ModifyAsync(x =>
+                  {
+                      x.Embed = eb.Build();
+                      x.Components = cb.Build();
+                  })
+                  .ConfigureAwait(false);
         }
     }
 
@@ -161,9 +168,8 @@ public class EmbedPlayer
         return new NowPlayingEmbed(track, Volume, Queue);
     }
 
-    private ComponentBuilder GetButtons(ExtendedTrackItem? track)
-    {
-        return track is null
+    private ComponentBuilder GetButtons(ExtendedTrackItem? track) =>
+        track is null
             ? new ComponentBuilder().WithButton(
                 "Disconnect Now",
                 "disconnect",
@@ -171,16 +177,19 @@ public class EmbedPlayer
                 new Emoji("⚠️")
             )
             : new NowPlayingButtons(Queue, State is PlayerState.Paused, Volume, IsAutoPlayEnabled, RepeatMode);
-    }
 
     public async Task DeleteNowPlayingMessageAsync()
     {
         if (NowPlayingMessage is null || TextChannel is null)
+        {
             return;
-        
+        }
+
         if (await TextChannel.GetMessageAsync(NowPlayingMessage.Id).ConfigureAwait(false) is null)
+        {
             return;
-        
+        }
+
         await NowPlayingMessage.DeleteAsync().ConfigureAwait(false);
     }
 

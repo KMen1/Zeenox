@@ -5,8 +5,5 @@ namespace Zeenox.Models.Actions.Player;
 
 public class PauseAction(IUser user) : Action(user, ActionType.Pause)
 {
-    public override string Stringify()
-    {
-        return "paused the player";
-    }
+    public override string Stringify() => "paused the player";
 }

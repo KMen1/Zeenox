@@ -14,13 +14,15 @@ public class RequireWhitelistedRoleAttribute : PreconditionAttribute
     {
         var databaseService = services.GetRequiredService<DatabaseService>();
         var allowedRoles = (
-            await databaseService.GetGuildConfigAsync(context.Guild.Id).ConfigureAwait(false)
-        )
-            .MusicSettings
-            .WhiteListRoles;
+                               await databaseService.GetGuildConfigAsync(context.Guild.Id).ConfigureAwait(false)
+                           )
+                           .MusicSettings
+                           .WhiteListRoles;
 
         if (allowedRoles.Count == 0)
+        {
             return PreconditionResult.FromSuccess();
+        }
 
         return (context.User as IGuildUser)!.RoleIds.Any(x => allowedRoles.Contains(x))
             ? PreconditionResult.FromSuccess()

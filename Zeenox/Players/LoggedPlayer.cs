@@ -11,8 +11,7 @@ using ActionType = Zeenox.Enums.ActionType;
 
 namespace Zeenox.Players;
 
-public class LoggedPlayer
-    (IPlayerProperties<LoggedPlayer, EmbedPlayerOptions> properties) : EmbedPlayer(properties)
+public class LoggedPlayer(IPlayerProperties<LoggedPlayer, EmbedPlayerOptions> properties) : EmbedPlayer(properties)
 {
     private List<Action> Actions { get; } = [];
     public ExtendedTrackItem? LastCurrentItem { get; private set; }
@@ -22,7 +21,7 @@ public class LoggedPlayer
         Actions.Add(action);
         return Task.CompletedTask;
     }
-    
+
     public object GetActionsForSerialization()
     {
         return Actions.Select(x => (object)x);
@@ -40,7 +39,7 @@ public class LoggedPlayer
         var result = await base.PlayAsync(tracks).ConfigureAwait(false);
         return result;
     }
-    
+
     public virtual async Task<int> PlayAsync(IUser user, TrackLoadResult trackLoadResult)
     {
         var tracks = trackLoadResult.Tracks.Select(x => new ExtendedTrackItem(x, user)).ToList();
@@ -53,12 +52,17 @@ public class LoggedPlayer
     {
         var result = await base.PlayAsync(trackItem, enqueue).ConfigureAwait(false);
         if (result > 0)
+        {
             await AddActionAsync(new EnqueueTrackAction(user, trackItem)).ConfigureAwait(false);
+        }
         else
+        {
             await AddActionAsync(new PlayAction(user, trackItem)).ConfigureAwait(false);
+        }
+
         return result;
     }
-    
+
     public virtual async ValueTask ResumeAsync(IUser user)
     {
         await base.ResumeAsync(CancellationToken.None).ConfigureAwait(false);
@@ -113,7 +117,10 @@ public class LoggedPlayer
     {
         var nextTrack = Queue.FirstOrDefault();
         if (nextTrack is not null && CurrentItem is not null)
+        {
             await AddActionAsync(new SkipAction(user, CurrentItem, (ExtendedTrackItem)nextTrack)).ConfigureAwait(false);
+        }
+
         await base.SkipAsync().ConfigureAwait(false);
     }
 
@@ -121,7 +128,9 @@ public class LoggedPlayer
     {
         var result = await base.RewindAsync().ConfigureAwait(false);
         if (result is not null)
+        {
             await AddActionAsync(new RewindAction(user, result)).ConfigureAwait(false);
+        }
     }
 
     public virtual async ValueTask SeekAsync(IUser user, int position)
@@ -135,7 +144,10 @@ public class LoggedPlayer
         var prevTrack = CurrentItem;
         var result = await base.SkipToAsync(index).ConfigureAwait(false);
         if (result)
+        {
             await AddActionAsync(new SkipToAction(user, prevTrack!, CurrentItem!)).ConfigureAwait(false);
+        }
+
         return result;
     }
 
@@ -144,7 +156,10 @@ public class LoggedPlayer
         var track = Queue.ElementAtOrDefault(index) as ExtendedTrackItem;
         var result = await base.RemoveAtAsync(index).ConfigureAwait(false);
         if (result)
+        {
             await AddActionAsync(new RemoveTrackAction(user, track!)).ConfigureAwait(false);
+        }
+
         return result;
     }
 
@@ -159,7 +174,10 @@ public class LoggedPlayer
         var track = Queue.ElementAtOrDefault(from) as ExtendedTrackItem;
         var result = await base.MoveTrackAsync(from, to).ConfigureAwait(false);
         if (result)
+        {
             await AddActionAsync(new MoveTrackAction(user, from, to, track!)).ConfigureAwait(false);
+        }
+
         return result;
     }
 
@@ -168,7 +186,10 @@ public class LoggedPlayer
         var track = Queue.ElementAtOrDefault(index) as ExtendedTrackItem;
         var result = await base.RemoveAtAsync(index).ConfigureAwait(false);
         if (result)
+        {
             await AddActionAsync(new RemoveTrackAction(user, track!)).ConfigureAwait(false);
+        }
+
         return result;
     }
 
@@ -179,7 +200,9 @@ public class LoggedPlayer
     {
         var prevVolume = Volume * 200;
         await base.SetVolumeAsync(volume).ConfigureAwait(false);
-        await AddActionAsync(new VolumeAction(user, volume, prevVolume > volume ? ActionType.VolumeDown : ActionType.VolumeUp)).ConfigureAwait(false);
+        await AddActionAsync(new VolumeAction(user, volume,
+                                              prevVolume > volume ? ActionType.VolumeDown : ActionType.VolumeUp))
+            .ConfigureAwait(false);
     }
 
     public virtual async ValueTask StopAsync(IUser user)

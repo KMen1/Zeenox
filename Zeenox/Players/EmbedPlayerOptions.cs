@@ -1,6 +1,5 @@
 ﻿using Discord;
 using Discord.WebSocket;
-using Lavalink4NET.Players.Vote;
 
 namespace Zeenox.Players;
 

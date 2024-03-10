@@ -14,13 +14,15 @@ public class RequireWhitelistedChannelAttribute : PreconditionAttribute
     {
         var databaseService = services.GetRequiredService<DatabaseService>();
         var allowedChannels = (
-            await databaseService.GetGuildConfigAsync(context.Guild.Id).ConfigureAwait(false)
-        )
-            .MusicSettings
-            .WhitelistChannels;
+                                  await databaseService.GetGuildConfigAsync(context.Guild.Id).ConfigureAwait(false)
+                              )
+                              .MusicSettings
+                              .WhitelistChannels;
 
         if (allowedChannels.Count == 0)
+        {
             return PreconditionResult.FromSuccess();
+        }
 
         return allowedChannels.Contains(context.Channel.Id)
             ? PreconditionResult.FromSuccess()

@@ -17,15 +17,10 @@ public class MusicService(
     IConfiguration config)
 {
     private async Task<T?> TryGetPlayerAsync<T>(ulong guildId)
-        where T : class, ILavalinkPlayer
-    {
-        return await audioService.Players.GetPlayerAsync<T>(guildId).ConfigureAwait(false);
-    }
+        where T : class, ILavalinkPlayer =>
+        await audioService.Players.GetPlayerAsync<T>(guildId).ConfigureAwait(false);
 
-    public Task<SocketPlayer?> TryGetPlayerAsync(ulong guildId)
-    {
-        return TryGetPlayerAsync<SocketPlayer>(guildId);
-    }
+    public Task<SocketPlayer?> TryGetPlayerAsync(ulong guildId) => TryGetPlayerAsync<SocketPlayer>(guildId);
 
     public async ValueTask<SocketPlayer?> TryCreatePlayerAsync(
         ulong guildId,
@@ -34,8 +29,8 @@ public class MusicService(
     )
     {
         var resumeSession = await databaseService
-            .GetResumeSessionAsync(guildId)
-            .ConfigureAwait(false);
+                                  .GetResumeSessionAsync(guildId)
+                                  .ConfigureAwait(false);
         var factory = new PlayerFactory<SocketPlayer, SocketPlayerOptions>(
             (properties, _) =>
             {
@@ -52,31 +47,32 @@ public class MusicService(
         );
 
         var retrieveOptions = new PlayerRetrieveOptions(
-            ChannelBehavior: PlayerChannelBehavior.Join,
-            VoiceStateBehavior: MemberVoiceStateBehavior.RequireSame
+            PlayerChannelBehavior.Join,
+            MemberVoiceStateBehavior.RequireSame
         );
 
         var guildConfig = await databaseService.GetGuildConfigAsync(guildId).ConfigureAwait(false);
 
         var result = await audioService.Players
-            .RetrieveAsync(
-                guildId,
-                voiceChannel.Id,
-                playerFactory: factory,
-                options: new OptionsWrapper<SocketPlayerOptions>(
-                    new SocketPlayerOptions
-                    {
-                        SelfDeaf = true,
-                        InitialVolume =
-                            (float)Math.Floor(guildConfig.MusicSettings.DefaultVolume / (double)2)
-                            / 100f,
-                        ClearQueueOnStop = false,
-                        ClearHistoryOnStop = false,
-                    }
-                ),
-                retrieveOptions
-            )
-            .ConfigureAwait(false);
+                                       .RetrieveAsync(
+                                           guildId,
+                                           voiceChannel.Id,
+                                           factory,
+                                           new OptionsWrapper<SocketPlayerOptions>(
+                                               new SocketPlayerOptions
+                                               {
+                                                   SelfDeaf = true,
+                                                   InitialVolume =
+                                                       (float)Math.Floor(
+                                                           guildConfig.MusicSettings.DefaultVolume / (double)2)
+                                                       / 100f,
+                                                   ClearQueueOnStop = false,
+                                                   ClearHistoryOnStop = false
+                                               }
+                                           ),
+                                           retrieveOptions
+                                       )
+                                       .ConfigureAwait(false);
 
         return result.IsSuccess ? result.Player : null;
     }

@@ -9,8 +9,5 @@ public class EnqueueTrackAction(IUser user, ExtendedTrackItem trackItem) : Queue
 {
     public TrackDTO Track { get; } = new(trackItem);
 
-    public override string Stringify()
-    {
-        return  $"enqueued: {trackItem.Title}";
-    }
+    public override string Stringify() => $"enqueued: {trackItem.Title}";
 }

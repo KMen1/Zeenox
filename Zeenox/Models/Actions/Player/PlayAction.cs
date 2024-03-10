@@ -9,8 +9,5 @@ public class PlayAction(IUser user, ExtendedTrackItem trackItem) : Action(user, 
 {
     public TrackDTO Track { get; } = new(trackItem);
 
-    public override string Stringify()
-    {
-        return $"played: {Track.Title}";
-    }
+    public override string Stringify() => $"played: {Track.Title}";
 }

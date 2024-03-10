@@ -9,18 +9,6 @@ namespace Zeenox.Dtos;
 
 public class TrackDTO
 {
-    public string Id { get; } = null!;
-    public string Title { get; } = null!;
-    public string Author { get; } = null!;
-    public double Duration { get; }
-    public string? Url { get; }
-    public string? ArtworkUrl { get; }
-    public SocketUserDTO? RequestedBy { get; }
-    
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    [JsonConverter(typeof(TimedLyricsLineConverter))]
-    public ImmutableArray<TimedLyricsLine>? TimedLyrics { get; }
-
     public TrackDTO(ExtendedTrackItem trackItem)
     {
         Id = trackItem.Track.Track.Identifier;
@@ -47,11 +35,25 @@ public class TrackDTO
 
     [JsonConstructor]
     public TrackDTO() { }
+
+    public string Id { get; } = null!;
+    public string Title { get; } = null!;
+    public string Author { get; } = null!;
+    public double Duration { get; }
+    public string? Url { get; }
+    public string? ArtworkUrl { get; }
+    public SocketUserDTO? RequestedBy { get; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonConverter(typeof(TimedLyricsLineConverter))]
+    public ImmutableArray<TimedLyricsLine>? TimedLyrics { get; }
 }
 
 public class TimedLyricsLineConverter : JsonConverter<ImmutableArray<TimedLyricsLine>>
 {
-    public override ImmutableArray<TimedLyricsLine> Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    public override ImmutableArray<TimedLyricsLine> Read(ref Utf8JsonReader reader,
+                                                         Type typeToConvert,
+                                                         JsonSerializerOptions options)
     {
         reader.Read();
         var builder = ImmutableArray.CreateBuilder<TimedLyricsLine>();
@@ -65,13 +67,16 @@ public class TimedLyricsLineConverter : JsonConverter<ImmutableArray<TimedLyrics
             reader.Read();
             reader.Read();
             var end = TimeSpan.FromMilliseconds(reader.GetDouble());
-            builder.Add(new TimedLyricsLine(line, new(start, end)));
+            builder.Add(new TimedLyricsLine(line, new TimeRange(start, end)));
             reader.Read();
         }
+
         return builder.ToImmutable();
     }
 
-    public override void Write(Utf8JsonWriter writer, ImmutableArray<TimedLyricsLine> value, JsonSerializerOptions options)
+    public override void Write(Utf8JsonWriter writer,
+                               ImmutableArray<TimedLyricsLine> value,
+                               JsonSerializerOptions options)
     {
         writer.WriteStartArray();
         foreach (var line in value)
@@ -84,6 +89,7 @@ public class TimedLyricsLineConverter : JsonConverter<ImmutableArray<TimedLyrics
             writer.WriteEndObject();
             writer.WriteEndObject();
         }
+
         writer.WriteEndArray();
     }
 }

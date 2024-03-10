@@ -30,8 +30,8 @@ public class MusicBase : ModuleBase
         cancellationToken.ThrowIfCancellationRequested();
         var voiceState = Context.User as IVoiceState;
         var resumeSession = await DatabaseService
-            .GetResumeSessionAsync(Context.Guild.Id)
-            .ConfigureAwait(false);
+                                  .GetResumeSessionAsync(Context.Guild.Id)
+                                  .ConfigureAwait(false);
         var factory = new PlayerFactory<SocketPlayer, SocketPlayerOptions>(
             (properties, _) =>
             {
@@ -50,37 +50,38 @@ public class MusicBase : ModuleBase
         );
 
         var retrieveOptions = new PlayerRetrieveOptions(
-            ChannelBehavior: allowConnect ? PlayerChannelBehavior.Join : PlayerChannelBehavior.None,
-            VoiceStateBehavior: requireChannel
+            allowConnect ? PlayerChannelBehavior.Join : PlayerChannelBehavior.None,
+            requireChannel
                 ? MemberVoiceStateBehavior.RequireSame
                 : MemberVoiceStateBehavior.Ignore,
-            Preconditions: preconditions
+            preconditions
         );
 
         var guildConfig = await DatabaseService
-            .GetGuildConfigAsync(Context.Guild.Id)
-            .ConfigureAwait(false);
+                                .GetGuildConfigAsync(Context.Guild.Id)
+                                .ConfigureAwait(false);
 
         var result = await AudioService.Players
-            .RetrieveAsync(
-                Context.Guild.Id,
-                voiceState!.VoiceChannel?.Id,
-                playerFactory: factory,
-                options: new OptionsWrapper<SocketPlayerOptions>(
-                    new SocketPlayerOptions
-                    {
-                        SelfDeaf = true,
-                        InitialVolume =
-                            (float)Math.Floor(guildConfig.MusicSettings.DefaultVolume / (double)2)
-                            / 100f,
-                        ClearQueueOnStop = false,
-                        ClearHistoryOnStop = false,
-                    }
-                ),
-                retrieveOptions,
-                cancellationToken: cancellationToken
-            )
-            .ConfigureAwait(false);
+                                       .RetrieveAsync(
+                                           Context.Guild.Id,
+                                           voiceState!.VoiceChannel?.Id,
+                                           factory,
+                                           new OptionsWrapper<SocketPlayerOptions>(
+                                               new SocketPlayerOptions
+                                               {
+                                                   SelfDeaf = true,
+                                                   InitialVolume =
+                                                       (float)Math.Floor(
+                                                           guildConfig.MusicSettings.DefaultVolume / (double)2)
+                                                       / 100f,
+                                                   ClearQueueOnStop = false,
+                                                   ClearHistoryOnStop = false
+                                               }
+                                           ),
+                                           retrieveOptions,
+                                           cancellationToken
+                                       )
+                                       .ConfigureAwait(false);
 
         if (result.IsSuccess)
         {
@@ -122,7 +123,7 @@ public class MusicBase : ModuleBase
                 when Equals(result.Precondition, PlayerPrecondition.QueueEmpty)
                 => "The queue is empty.",
 
-            _ => "Unknown error.",
+            _ => "Unknown error."
         };
 
         return new EmbedBuilder().WithTitle(title).WithColor(Color.Red).Build();

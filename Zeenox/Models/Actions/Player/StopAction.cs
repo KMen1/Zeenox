@@ -5,8 +5,5 @@ namespace Zeenox.Models.Actions.Player;
 
 public class StopAction(IUser user) : Action(user, ActionType.Stop)
 {
-    public override string Stringify()
-    {
-        return "stopped the player";
-    }
+    public override string Stringify() => "stopped the player";
 }

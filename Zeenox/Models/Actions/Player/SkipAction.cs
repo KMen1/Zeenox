@@ -5,13 +5,11 @@ using ActionType = Zeenox.Enums.ActionType;
 
 namespace Zeenox.Models.Actions.Player;
 
-public class SkipAction(IUser user, ExtendedTrackItem previous, ExtendedTrackItem trackItem) : Action(user, ActionType.Skip)
+public class SkipAction(IUser user, ExtendedTrackItem previous, ExtendedTrackItem trackItem)
+    : Action(user, ActionType.Skip)
 {
     public TrackDTO PreviousTrack { get; } = new(previous);
     public TrackDTO Track { get; } = new(trackItem);
-    
-    public override string Stringify()
-    {
-        return $"skipped to: {Track.Title}";
-    }
+
+    public override string Stringify() => $"skipped to: {Track.Title}";
 }
