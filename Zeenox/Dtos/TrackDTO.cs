@@ -21,6 +21,7 @@ public class TrackDTO
         Url = trackItem.Track.Uri?.ToString();
         ArtworkUrl = trackItem.ArtworkUri;
         TimedLyrics = trackItem.TimedLyrics;
+        Lyrics = trackItem.Lyrics;
     }
 
     public TrackDTO(LavalinkTrack track)
@@ -47,6 +48,9 @@ public class TrackDTO
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonConverter(typeof(TimedLyricsLineConverter))]
     public ImmutableArray<TimedLyricsLine>? TimedLyrics { get; }
+    
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ImmutableArray<string>? Lyrics { get; }
 }
 
 public class TimedLyricsLineConverter : JsonConverter<ImmutableArray<TimedLyricsLine>>
