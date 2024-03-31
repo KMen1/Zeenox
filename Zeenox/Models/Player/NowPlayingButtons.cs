@@ -14,50 +14,55 @@ public class NowPlayingButtons : ComponentBuilder
     )
     {
         WithButton(
-            "Previous",
-            "previous",
-            emote: new Emoji("⏮"),
+            customId: "previous",
+            emote: Emote.Parse("<:playertrackprev:1223329575074005063>"),
             disabled: queue is { HasHistory: false, History.Count: 0 },
             row: 0
         );
         WithButton(
-            isPaused ? "Resume" : "Pause",
-            "pause",
-            emote: isPaused ? new Emoji("▶") : new Emoji("⏸"),
+            customId: "pause",
+            emote: isPaused
+                ? Emote.Parse("<:playerplay:1223329542979190884>")
+                : Emote.Parse("<:playerpause:1223329563707314267>"),
             row: 0
         );
-        WithButton("Stop", "stop", emote: new Emoji("⏹"), row: 0);
         WithButton(
-            "Next",
-            "skip",
-            emote: new Emoji("⏭"),
+            customId: "stop",
+            emote: Emote.Parse("<:playerstop:1223330575457189948>"),
+            row: 0
+        );
+        WithButton(
+            customId: "skip",
+            emote: Emote.Parse("<:playertracknext:1223329623467626688>"),
             disabled: !autoPlay && queue.Count == 0,
             row: 0
         );
-        WithButton("Down", "volumedown", emote: new Emoji("🔉"), disabled: volume == 0, row: 1);
         WithButton(
-            "Loop "
-            + loopMode switch
+            customId: "volumedown",
+            emote: Emote.Parse("<:volumedown:1223331122373722262>"),
+            disabled: volume == 0,
+            row: 1
+        );
+        WithButton(
+            customId: "loop",
+            emote: loopMode switch
             {
-                TrackRepeatMode.Track => "[Track]",
-                TrackRepeatMode.Queue => "[Queue]",
-                _ => "[Off]"
+                TrackRepeatMode.None => Emote.Parse("<:repeatoff:1223331694959136929>"),
+                TrackRepeatMode.Track => Emote.Parse("<:repeatonce:1223331684519383181>"),
+                TrackRepeatMode.Queue => Emote.Parse("<:repeat:1223331661916278875>"),
+                _ => Emote.Parse("<:repeatoff:1223331694959136929>")
             },
-            "loop",
-            emote: new Emoji("🔁"),
             row: 1
         );
         WithButton(
-            "Up",
-            "volumeup",
-            emote: new Emoji("🔊"),
+            customId: "autoplay",
+            emote: Emote.Parse("<:autoplay:1223331067797311709>"),
+            row: 1
+        );
+        WithButton(
+            customId: "volumeup",
+            emote: Emote.Parse("<:volumeup:1223331102052323431>"),
             disabled: Math.Abs(volume - 0.5f) < 0.01f,
-            row: 1
-        );
-        WithButton(
-            "AutoPlay " + (autoPlay ? "[On]" : "[Off]"),
-            "autoplay",
-            emote: new Emoji("🔄"),
             row: 1
         );
     }
