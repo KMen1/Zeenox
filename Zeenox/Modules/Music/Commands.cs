@@ -80,6 +80,69 @@ public class Commands : MusicBase
 
     [RequireWhitelistedChannel]
     [RequireWhitelistedRole]
+    [SlashCommand("lyrics", "Shows every action that has been performed on the player.")]
+    public async Task ShowLyricsAsync()
+    {
+        var player = await TryGetPlayerAsync(isDeferred: true).ConfigureAwait(false);
+        if (player?.CurrentItem is null)
+        {
+            return;
+        }
+
+        IEnumerable<PageBuilder> pages;
+        if (player.CurrentItem.TimedLyrics is not null)
+        {
+            pages = player.CurrentItem.TimedLyrics.Value
+                .Chunk(10)
+                .Select(x =>
+                {
+                    var pageBuilder = new PageBuilder();
+                    foreach (var line in x)
+                    {
+                        pageBuilder.AddField(line.Range.Start.ToString(@"hh\:mm\:ss"), line.Line);
+                    }
+
+                    return pageBuilder;
+                });
+        }
+        else if (player.CurrentItem.Lyrics is not null)
+        {
+            var builder = new StringBuilder();
+            pages = player.CurrentItem.Lyrics.Value
+                .Chunk(10)
+                .Select(x =>
+                {
+                    var pageBuilder = new PageBuilder();
+                    foreach (var line in x)
+                    {
+                        builder.AppendLine(line);
+                    }
+
+                    pageBuilder.WithDescription(builder.ToString());
+                    builder.Clear();
+
+                    return pageBuilder;
+                });
+        }
+        else
+        {
+            return;
+        }
+
+        var paginator = new StaticPaginatorBuilder().WithPages(pages).Build();
+
+        await InteractiveService
+            .SendPaginatorAsync(
+                paginator,
+                Context.Interaction,
+                ephemeral: true,
+                timeout: TimeSpan.FromMinutes(5)
+            )
+            .ConfigureAwait(false);
+    }
+
+    [RequireWhitelistedChannel]
+    [RequireWhitelistedRole]
     [SlashCommand("play", "Plays a song. The bot will join the channel you are currently in.")]
     public async Task PlayAsync(
         [Summary(
