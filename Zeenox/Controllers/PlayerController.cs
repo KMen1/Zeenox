@@ -29,54 +29,6 @@ public class PlayerController(
     IAudioService audioService,
     DatabaseService dbService) : ControllerBase
 {
-    [HttpGet]
-    public async Task<IActionResult> GetPlayer()
-    {
-        var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
-        if (!IsAllowedToPerform(player, user, out var result))
-        {
-            return result;
-        }
-
-        var resumeSession = await dbService.GetResumeSessionAsync(player.GuildId).ConfigureAwait(false);
-        return Ok(JsonSerializer.Serialize(
-                      new FullPlayerDTO(
-                          player, resumeSession is null ? null : new ResumeSessionDTO(resumeSession, client))));
-    }
-
-    [Route("options")]
-    [HttpGet]
-    public async Task<IActionResult> GetPlayer(PayloadType type)
-    {
-        var data = new Dictionary<string, object?>();
-        var (user, player) = await GetPlayerAndUserAsync().ConfigureAwait(false);
-        if (!IsAllowedToPerform(player, user, out var result))
-        {
-            return result;
-        }
-
-        if (type.HasFlag(PayloadType.UpdatePlayer))
-        {
-            data["State"] = new SocketPlayerDTO(player);
-        }
-
-        if (type.HasFlag(PayloadType.UpdateQueue))
-        {
-            data["Queue"] = new QueueDTO(player.Queue);
-        }
-
-        if (type.HasFlag(PayloadType.UpdateActions))
-        {
-            data["Actions"] = player.GetActionsForSerialization();
-        }
-
-        if (type.HasFlag(PayloadType.UpdateTrack))
-        {
-            data["CurrentTrack"] = player.CurrentItem is not null ? new TrackDTO(player.CurrentItem) : null;
-        }
-
-        return Ok(JsonSerializer.Serialize(data));
-    }
 
     [Route("state")]
     [HttpGet]

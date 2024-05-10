@@ -7,7 +7,6 @@ using Lavalink4NET.Players.Queued;
 using Lavalink4NET.Players.Vote;
 using Lavalink4NET.Protocol.Payloads.Events;
 using Lavalink4NET.Rest.Entities.Tracks;
-using SpotifyAPI.Web;
 using Zeenox.Models.Player;
 
 namespace Zeenox.Players;
@@ -18,9 +17,7 @@ public abstract class MusicPlayer(IPlayerProperties<MusicPlayer, MusicPlayerOpti
     public new ExtendedTrackItem? CurrentItem => (ExtendedTrackItem?)base.CurrentItem;
     public DateTimeOffset StartedAt { get; } = properties.SystemClock.UtcNow;
     public bool IsAutoPlayEnabled { get; private set; } = true;
-    private SpotifyClient SpotifyClient => properties.Options.Value.SpotifyClient;
     private IAudioService AudioService => properties.Options.Value.AudioService;
-    private string SpotifyMarket => properties.Options.Value.SpotifyMarket;
 
     public virtual ValueTask NotifyLyricsLoadedAsync(Lyrics? lyrics, CancellationToken cancellationToken = new())
     {
@@ -119,7 +116,7 @@ public abstract class MusicPlayer(IPlayerProperties<MusicPlayer, MusicPlayerOpti
 
     protected virtual async ValueTask<bool> SkipToAsync(int index)
     {
-        if (index < 0 || index >= Queue.Count)
+        if (!IsValidIndex(index))
         {
             return false;
         }
@@ -134,14 +131,11 @@ public abstract class MusicPlayer(IPlayerProperties<MusicPlayer, MusicPlayerOpti
 
     protected virtual ValueTask ShuffleAsync() => Queue.ShuffleAsync();
 
+    private bool IsValidIndex(int index) => index >= 0 && index < Queue.Count;
+    
     public virtual async ValueTask<bool> MoveTrackAsync(int from, int to)
     {
-        if (from < 0 || from >= Queue.Count)
-        {
-            return false;
-        }
-
-        if (to < 0 || to >= Queue.Count)
+        if (!IsValidIndex(from) || !IsValidIndex(to))
         {
             return false;
         }
@@ -158,82 +152,46 @@ public abstract class MusicPlayer(IPlayerProperties<MusicPlayer, MusicPlayerOpti
     {
         await base.NotifyTrackEndedAsync(queueItem, endReason, cancellationToken).ConfigureAwait(false);
 
-        if (IsAutoPlayEnabled && Queue.Count < 2 && RepeatMode == TrackRepeatMode.None)
+        if (IsAutoPlayEnabled && Queue.Count < 3 && RepeatMode == TrackRepeatMode.None)
         {
-            var recommendedTracks = await GetRecommendedTrackAsync(CurrentItem is null ? 3 : 2 - Queue.Count)
+            var recommendedTracks = await GetRecommendedTrackAsync(CurrentItem is null ? 4 : 3 - Queue.Count)
                 .ConfigureAwait(false);
             await PlayAsync(recommendedTracks).ConfigureAwait(false);
         }
     }
 
-    private async Task<List<ExtendedTrackItem>> GetRecommendedTrackAsync(int limit = 2)
+    private async Task<List<ExtendedTrackItem>> GetRecommendedTrackAsync(int limit = 5)
     {
         var trackIds = GetSeedTrackIds();
-        var request = new RecommendationsRequest
-        {
-            Market = SpotifyMarket
-        };
-        request.SeedTracks.AddRange(trackIds);
-        request.Min.Add("popularity", "50");
 
-        var response = await SpotifyClient.Browse.GetRecommendations(request).ConfigureAwait(false);
-        var orderedTracks = response.Tracks.OrderByDescending(x => x.Popularity).ToList();
-
-        var recommendedTracks = new List<ExtendedTrackItem>();
-        for (var i = 0; i < limit; i++)
-        {
-            var url = orderedTracks.Skip(i).First(x => Queue.All(y => y.Identifier != x.Id)).ExternalUrls["spotify"];
-            var track = await AudioService.Tracks
-                                          .LoadTrackAsync(
-                                              url, new TrackLoadOptions { SearchMode = TrackSearchMode.None })
-                                          .ConfigureAwait(false);
-            if (track is null)
+        var rec = await AudioService.Tracks.LoadTracksAsync(
+            $"sprec:seed_tracks={string.Join(',', trackIds)}&min_popularity=50", new TrackLoadOptions
             {
-                continue;
-            }
-
-            recommendedTracks.Add(new ExtendedTrackItem(track, null));
-        }
-
-        return recommendedTracks;
+                SearchBehavior = StrictSearchBehavior.Passthrough,
+                SearchMode = TrackSearchMode.None
+            }).ConfigureAwait(false);
+        
+        return rec.Tracks.Select(x => new ExtendedTrackItem(x, null)).Take(limit).ToList();
     }
 
-    private List<string> GetSeedTrackIds()
+    private ImmutableArray<string> GetSeedTrackIds()
     {
         var ids = new List<string>();
-        var count = 0;
-        var index1 = 0;
-        var index2 = 0;
-
-        while (count < 4 && (index1 < Queue.Count || index2 < Queue.History?.Count))
+        for (var i = 0; i < 4; i++)
         {
-            if (index1 < Queue.Count)
+            if (i < Queue.Count && Queue[i].Track?.SourceName == "spotify")
             {
-                if (Queue[index1].Track?.SourceName == "spotify")
-                {
-                    ids.Add(Queue[index1].Identifier);
-                    count++;
-                }
-
-                index1++;
+                ids.Add(Queue[i].Identifier);
             }
-
-            if (!(index2 < Queue.History?.Count))
+            else if (i < Queue.History?.Count && Queue.History[i].Track?.SourceName == "spotify")
             {
-                continue;
+                ids.Add(Queue.History[i].Identifier);
             }
-
-            if (Queue.History[index2].Track?.SourceName != "spotify")
+            else
             {
-                index2++;
-                continue;
+                break;
             }
-
-            ids.Add(Queue.History[index2].Identifier);
-            index2++;
-            count++;
         }
-
-        return ids;
+        return [..ids];
     }
 }

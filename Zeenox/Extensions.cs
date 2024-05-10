@@ -1,12 +1,12 @@
 ﻿using System.Diagnostics.CodeAnalysis;
-using System.Net;
 using System.Net.WebSockets;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using Discord;
-using HtmlAgilityPack;
+using Lavalink4NET.Players.Queued;
 using Serilog;
+using Zeenox.Dtos;
 using Zeenox.Enums;
 using Zeenox.Models.Actions;
 using Zeenox.Models.Actions.Player;
@@ -161,129 +161,51 @@ public static class Extensions
 
     public static async Task SendSocketMessagesAsync(
         this WebSocket socket,
+        SocketPlayer player,
         bool updatePlayer,
         bool updateTrack,
         bool updateQueue,
         bool updateActions
     )
     {
+        var data = new Payload();
+
         var type = PayloadType.None;
         if (updatePlayer)
         {
             type |= PayloadType.UpdatePlayer;
+            data.State = new SocketPlayerDTO(player);
         }
 
         if (updateTrack)
         {
             type |= PayloadType.UpdateTrack;
+            data.CurrentTrack = player.CurrentItem is not null
+                ? new TrackDTO(player.CurrentItem)
+                : null;
         }
 
         if (updateQueue)
         {
             type |= PayloadType.UpdateQueue;
+            data.Queue = new QueueDTO(player.Queue);
         }
 
         if (updateActions)
         {
             type |= PayloadType.UpdateActions;
+            data.Actions = player.GetActionsForSerialization();
         }
+
+        data.Type = type;
 
         Log.Logger.Debug("Sending socket message with type {Type}", type.ToString());
 
-        await socket
-              .SendTextAsync(JsonSerializer.Serialize(new Payload(type)))
-              .ConfigureAwait(false);
+        await socket.SendTextAsync(JsonSerializer.Serialize(data)).ConfigureAwait(false);
     }
 
     public static bool IsUserListening(this SocketPlayer player, IUser user)
     {
         return player.VoiceChannel.ConnectedUsers.Any(x => x.Id == user.Id);
-    }
-
-    public static void AddRange<T>(this IList<T>? list, IEnumerable<T>? items)
-    {
-        ArgumentNullException.ThrowIfNull(list);
-        ArgumentNullException.ThrowIfNull(items);
-
-        if (list is List<T> asList)
-        {
-            asList.AddRange(items);
-        }
-        else
-        {
-            foreach (var item in items)
-            {
-                list.Add(item);
-            }
-        }
-    }
-
-    public static List<string> GetAllText(this HtmlNode node)
-    {
-        List<string> texts = [];
-        var child = node.FirstChild;
-        while (child is not null)
-        {
-            if (child.Name is "br")
-            {
-                child = child.NextSibling;
-                continue;
-            }
-
-            if (child.NodeType is HtmlNodeType.Text)
-            {
-                texts.Add(WebUtility.HtmlDecode(child.InnerText));
-            }
-            else
-            {
-                texts.AddRange(GetAllText(child));
-            }
-
-            child = child.NextSibling;
-        }
-
-        return CombineStringsInParentheses(CombineStringsInParentheses(texts), '[', ']');
-    }
-
-    private static List<string> CombineStringsInParentheses(List<string> input, char open = '(', char close = ')')
-    {
-        var combinedStrings = new List<string>();
-        var currentCombinedString = "";
-
-        foreach (var str in input)
-        {
-            if (str.Contains(open) && str.Contains(close))
-            {
-                combinedStrings.Add(str);
-                continue;
-            }
-
-            if (currentCombinedString is not "")
-            {
-                if (str.Contains(close))
-                {
-                    currentCombinedString += str;
-                    combinedStrings.Add(currentCombinedString);
-                    currentCombinedString = "";
-                }
-                else
-                {
-                    currentCombinedString += str;
-                }
-            }
-            else
-            {
-                if (str.Contains(open))
-                {
-                    currentCombinedString = str;
-                }
-                else
-                {
-                    combinedStrings.Add(str);
-                }
-            }
-        }
-
-        return combinedStrings;
     }
 }

@@ -4,7 +4,6 @@ using Lavalink4NET;
 using Lavalink4NET.Clients;
 using Lavalink4NET.Players;
 using Microsoft.Extensions.Options;
-using SpotifyAPI.Web;
 using Zeenox.Players;
 
 namespace Zeenox.Services;
@@ -12,9 +11,7 @@ namespace Zeenox.Services;
 public class MusicService(
     IAudioService audioService,
     DatabaseService databaseService,
-    DiscordSocketClient client,
-    SpotifyClient spotifyClient,
-    IConfiguration config)
+    DiscordSocketClient client)
 {
     private async Task<T?> TryGetPlayerAsync<T>(ulong guildId)
         where T : class, ILavalinkPlayer =>
@@ -39,9 +36,7 @@ public class MusicService(
                 properties.Options.Value.DbService = databaseService;
                 properties.Options.Value.DiscordClient = client;
                 properties.Options.Value.ResumeSession = resumeSession;
-                properties.Options.Value.SpotifyClient = spotifyClient;
                 properties.Options.Value.AudioService = audioService;
-                properties.Options.Value.SpotifyMarket = config["Spotify:Market"] ?? "US";
                 return ValueTask.FromResult(new SocketPlayer(properties));
             }
         );
@@ -61,13 +56,13 @@ public class MusicService(
                                            new OptionsWrapper<SocketPlayerOptions>(
                                                new SocketPlayerOptions
                                                {
-                                                   SelfDeaf = true,
                                                    InitialVolume =
                                                        (float)Math.Floor(
                                                            guildConfig.MusicSettings.DefaultVolume / (double)2)
                                                        / 100f,
                                                    ClearQueueOnStop = false,
-                                                   ClearHistoryOnStop = false
+                                                   ClearHistoryOnStop = false,
+                                                   HistoryCapacity = 100,
                                                }
                                            ),
                                            retrieveOptions

@@ -48,16 +48,18 @@ public class TrackDTO
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonConverter(typeof(TimedLyricsLineConverter))]
     public ImmutableArray<TimedLyricsLine>? TimedLyrics { get; }
-    
+
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public ImmutableArray<string>? Lyrics { get; }
 }
 
 public class TimedLyricsLineConverter : JsonConverter<ImmutableArray<TimedLyricsLine>>
 {
-    public override ImmutableArray<TimedLyricsLine> Read(ref Utf8JsonReader reader,
-                                                         Type typeToConvert,
-                                                         JsonSerializerOptions options)
+    public override ImmutableArray<TimedLyricsLine> Read(
+        ref Utf8JsonReader reader,
+        Type typeToConvert,
+        JsonSerializerOptions options
+    )
     {
         reader.Read();
         var builder = ImmutableArray.CreateBuilder<TimedLyricsLine>();
@@ -71,16 +73,18 @@ public class TimedLyricsLineConverter : JsonConverter<ImmutableArray<TimedLyrics
             reader.Read();
             reader.Read();
             var end = TimeSpan.FromMilliseconds(reader.GetDouble());
-            builder.Add(new TimedLyricsLine(line, new TimeRange(start, end)));
+            builder.Add(new TimedLyricsLine(line ?? "MISSING", new TimeRange(start, end)));
             reader.Read();
         }
 
         return builder.ToImmutable();
     }
 
-    public override void Write(Utf8JsonWriter writer,
-                               ImmutableArray<TimedLyricsLine> value,
-                               JsonSerializerOptions options)
+    public override void Write(
+        Utf8JsonWriter writer,
+        ImmutableArray<TimedLyricsLine> value,
+        JsonSerializerOptions options
+    )
     {
         writer.WriteStartArray();
         foreach (var line in value)

@@ -1,6 +1,5 @@
 ﻿using System.Collections.Concurrent;
 using System.Net.WebSockets;
-using System.Text.Json;
 using Discord;
 using Discord.WebSocket;
 using Lavalink4NET.Integrations.LyricsJava;
@@ -9,11 +8,9 @@ using Lavalink4NET.Players.Queued;
 using Lavalink4NET.Protocol.Payloads.Events;
 using Lavalink4NET.Rest.Entities.Tracks;
 using Lavalink4NET.Tracks;
-using Zeenox.Enums;
 using Zeenox.Models;
 using Zeenox.Models.Actions.Queue;
 using Zeenox.Models.Player;
-using Zeenox.Models.Socket;
 using Zeenox.Services;
 using Action = Zeenox.Models.Actions.Action;
 
@@ -201,8 +198,7 @@ public sealed class SocketPlayer(IPlayerProperties<SocketPlayer, SocketPlayerOpt
             {
                 if (State is PlayerState.Playing && socket.State == WebSocketState.Open)
                 {
-                    await socket.SendTextAsync(JsonSerializer.Serialize(new Payload(PayloadType.UpdatePlayer)))
-                                .ConfigureAwait(false);
+                    await socket.SendSocketMessagesAsync(this, true, false, false, false).ConfigureAwait(false);
                 }
                 else if (socket.State is WebSocketState.Closed or WebSocketState.Aborted)
                 {
@@ -235,7 +231,7 @@ public sealed class SocketPlayer(IPlayerProperties<SocketPlayer, SocketPlayerOpt
                 continue;
             }
 
-            await socket.SendSocketMessagesAsync(updatePlayer, updateTrack, updateQueue, updateActions)
+            await socket.SendSocketMessagesAsync(this, updatePlayer, updateTrack, updateQueue, updateActions)
                         .ConfigureAwait(false);
         }
     }
@@ -257,7 +253,7 @@ public sealed class SocketPlayer(IPlayerProperties<SocketPlayer, SocketPlayerOpt
         if (queue.Count > 0)
         {
             await Queue.AddRangeAsync(queue).ConfigureAwait(false);
-            await AddActionAsync(new EnqueuePlaylistAction(user, null, queue)).ConfigureAwait(false);
+            await AddActionAsync(new AddPlaylistAction(user, null, queue)).ConfigureAwait(false);
         }
 
         await PlayAsync(user, newCurrentTrack, false).ConfigureAwait(false);

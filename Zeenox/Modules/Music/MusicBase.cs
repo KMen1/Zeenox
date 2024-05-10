@@ -6,7 +6,6 @@ using Lavalink4NET.Clients;
 using Lavalink4NET.Players;
 using Lavalink4NET.Players.Preconditions;
 using Microsoft.Extensions.Options;
-using SpotifyAPI.Web;
 using Zeenox.Players;
 using Zeenox.Services;
 
@@ -16,8 +15,6 @@ public class MusicBase : ModuleBase
 {
     public IAudioService AudioService { get; set; } = null!;
     public DatabaseService DatabaseService { get; set; } = null!;
-    public SpotifyClient SpotifyClient { get; set; } = null!;
-    public IConfiguration Configuration { get; set; } = null!;
 
     protected async ValueTask<SocketPlayer?> TryGetPlayerAsync(
         bool allowConnect = false,
@@ -30,8 +27,8 @@ public class MusicBase : ModuleBase
         cancellationToken.ThrowIfCancellationRequested();
         var voiceState = Context.User as IVoiceState;
         var resumeSession = await DatabaseService
-                                  .GetResumeSessionAsync(Context.Guild.Id)
-                                  .ConfigureAwait(false);
+            .GetResumeSessionAsync(Context.Guild.Id)
+            .ConfigureAwait(false);
         var factory = new PlayerFactory<SocketPlayer, SocketPlayerOptions>(
             (properties, _) =>
             {
@@ -43,45 +40,40 @@ public class MusicBase : ModuleBase
                 properties.Options.Value.ResumeSession = resumeSession;
                 properties.Options.Value.DiscordClient = Context.Client;
                 properties.Options.Value.AudioService = AudioService;
-                properties.Options.Value.SpotifyClient = SpotifyClient;
-                properties.Options.Value.SpotifyMarket = Configuration["Spotify:Market"] ?? "US";
                 return ValueTask.FromResult(new SocketPlayer(properties));
             }
         );
 
         var retrieveOptions = new PlayerRetrieveOptions(
             allowConnect ? PlayerChannelBehavior.Join : PlayerChannelBehavior.None,
-            requireChannel
-                ? MemberVoiceStateBehavior.RequireSame
-                : MemberVoiceStateBehavior.Ignore,
+            requireChannel ? MemberVoiceStateBehavior.RequireSame : MemberVoiceStateBehavior.Ignore,
             preconditions
         );
 
         var guildConfig = await DatabaseService
-                                .GetGuildConfigAsync(Context.Guild.Id)
-                                .ConfigureAwait(false);
+            .GetGuildConfigAsync(Context.Guild.Id)
+            .ConfigureAwait(false);
 
         var result = await AudioService.Players
-                                       .RetrieveAsync(
-                                           Context.Guild.Id,
-                                           voiceState!.VoiceChannel?.Id,
-                                           factory,
-                                           new OptionsWrapper<SocketPlayerOptions>(
-                                               new SocketPlayerOptions
-                                               {
-                                                   SelfDeaf = true,
-                                                   InitialVolume =
-                                                       (float)Math.Floor(
-                                                           guildConfig.MusicSettings.DefaultVolume / (double)2)
-                                                       / 100f,
-                                                   ClearQueueOnStop = false,
-                                                   ClearHistoryOnStop = false
-                                               }
-                                           ),
-                                           retrieveOptions,
-                                           cancellationToken
-                                       )
-                                       .ConfigureAwait(false);
+            .RetrieveAsync(
+                Context.Guild.Id,
+                voiceState!.VoiceChannel?.Id,
+                factory,
+                new OptionsWrapper<SocketPlayerOptions>(
+                    new SocketPlayerOptions
+                    {
+                        InitialVolume =
+                            (float)Math.Floor(guildConfig.MusicSettings.DefaultVolume / (double)2)
+                            / 100f,
+                        ClearQueueOnStop = false,
+                        ClearHistoryOnStop = false,
+                        HistoryCapacity = 100
+                    }
+                ),
+                retrieveOptions,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
 
         if (result.IsSuccess)
         {

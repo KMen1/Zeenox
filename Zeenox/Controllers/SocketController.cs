@@ -2,10 +2,12 @@
 using System.Net.WebSockets;
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json;
 using Asp.Versioning;
 using Discord.WebSocket;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
+using Zeenox.Dtos;
 using Zeenox.Services;
 
 namespace Zeenox.Controllers;
@@ -19,15 +21,18 @@ public class SocketController : ControllerBase
     private static SymmetricSecurityKey _securityKey = null!;
     private readonly DiscordSocketClient _client;
     private readonly MusicService _musicService;
+    private readonly DatabaseService _dbService;
 
     public SocketController(
         MusicService musicService,
         IConfiguration configuration,
-        DiscordSocketClient client
+        DiscordSocketClient client,
+        DatabaseService dbService
     )
     {
         _musicService = musicService;
         _client = client;
+        _dbService = dbService;
         _securityKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(
                 configuration["JwtSettings:Key"] ?? throw new Exception("JWT key is not set!")
@@ -45,8 +50,8 @@ public class SocketController : ControllerBase
         }
 
         using var webSocket = await HttpContext.WebSockets
-                                               .AcceptWebSocketAsync()
-                                               .ConfigureAwait(false);
+            .AcceptWebSocketAsync()
+            .ConfigureAwait(false);
         await HandleSocketAsync(webSocket).ConfigureAwait(false);
     }
 
@@ -59,8 +64,8 @@ public class SocketController : ControllerBase
 
         var buffer = new byte[1024 * 4];
         var receiveResult = await socket
-                                  .ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None)
-                                  .ConfigureAwait(false);
+            .ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None)
+            .ConfigureAwait(false);
 
         var jwt = Encoding.UTF8.GetString(buffer, 0, receiveResult.Count);
         if (string.IsNullOrWhiteSpace(jwt))
@@ -89,13 +94,27 @@ public class SocketController : ControllerBase
             }
 
             player = await _musicService
-                           .TryCreatePlayerAsync(guildId.Value, voiceChannel)
-                           .ConfigureAwait(false);
+                .TryCreatePlayerAsync(guildId.Value, voiceChannel)
+                .ConfigureAwait(false);
             if (player is null)
             {
                 return;
             }
         }
+
+        var resumeSession = await _dbService
+            .GetResumeSessionAsync(player.GuildId)
+            .ConfigureAwait(false);
+        await socket
+            .SendTextAsync(
+                JsonSerializer.Serialize(
+                    new FullPlayerDTO(
+                        player,
+                        resumeSession is null ? null : new ResumeSessionDTO(resumeSession, _client)
+                    )
+                )
+            )
+            .ConfigureAwait(false);
 
         player.RegisterSocket(userId.Value, socket);
         await ReceiveAsync(socket).ConfigureAwait(false);
@@ -105,14 +124,14 @@ public class SocketController : ControllerBase
     {
         var buffer = new byte[1024 * 4];
         var result = await socket
-                           .ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None)
-                           .ConfigureAwait(false);
+            .ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None)
+            .ConfigureAwait(false);
 
         while (!result.CloseStatus.HasValue)
         {
             result = await socket
-                           .ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None)
-                           .ConfigureAwait(false);
+                .ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None)
+                .ConfigureAwait(false);
         }
 
         if (
@@ -121,12 +140,12 @@ public class SocketController : ControllerBase
         )
         {
             await socket
-                  .CloseAsync(
-                      WebSocketCloseStatus.NormalClosure,
-                      "Closed by the client",
-                      CancellationToken.None
-                  )
-                  .ConfigureAwait(false);
+                .CloseAsync(
+                    WebSocketCloseStatus.NormalClosure,
+                    "Closed by the client",
+                    CancellationToken.None
+                )
+                .ConfigureAwait(false);
         }
     }
 
