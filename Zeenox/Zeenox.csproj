@@ -8,6 +8,7 @@
         <LangVersion>12</LangVersion>
         <AssemblyVersion>1.0.0</AssemblyVersion>
         <FileVersion>1.0.0</FileVersion>
+        <UserSecretsId>90bdda41-de38-4192-843f-ae3b11db722f</UserSecretsId>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
@@ -16,27 +17,25 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Asp.Versioning.Mvc" Version="8.0.0"/>
-        <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="8.0.0"/>
+        <PackageReference Include="Asp.Versioning.Mvc" Version="8.1.0" />
+        <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="8.1.0" />
         <PackageReference Include="BenchmarkDotNet" Version="0.13.12"/>
         <PackageReference Include="ConfigureAwaitChecker.Analyzer" Version="5.0.0.1">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Discord.Addons.Hosting" Version="6.0.0"/>
-        <PackageReference Include="Discord.Net" Version="3.13.1"/>
+        <PackageReference Include="Discord.Net" Version="3.14.1" />
         <PackageReference Include="Fergun.Interactive" Version="1.7.5"/>
-        <PackageReference Include="HtmlAgilityPack" Version="1.11.59"/>
-        <PackageReference Include="HtmlAgilityPack.CssSelectors.NetCore" Version="1.2.1"/>
-        <PackageReference Include="Lavalink4NET" Version="4.0.17" />
-        <PackageReference Include="Lavalink4NET.Discord.NET" Version="4.0.17" />
-        <PackageReference Include="Lavalink4NET.InactivityTracking" Version="4.0.17" />
-        <PackageReference Include="Lavalink4NET.Integrations.Lavasrc" Version="4.0.17" />
-        <PackageReference Include="Lavalink4NET.Integrations.LyricsJava" Version="4.0.17" />
-        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.3" />
-        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.3" />
+        <PackageReference Include="Lavalink4NET" Version="4.0.19-beta.6" />
+        <PackageReference Include="Lavalink4NET.Discord.NET" Version="4.0.19-beta.6" />
+        <PackageReference Include="Lavalink4NET.InactivityTracking" Version="4.0.19-beta.6" />
+        <PackageReference Include="Lavalink4NET.Integrations.Lavasrc" Version="4.0.19-beta.6" />
+        <PackageReference Include="Lavalink4NET.Integrations.LyricsJava" Version="4.0.19-beta.6" />
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.4" />
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.4" />
         <PackageReference Include="Microsoft.AspNetCore.RateLimiting" Version="7.0.0-rc.2.22476.2"/>
-        <PackageReference Include="MongoDB.Driver" Version="2.24.0"/>
+        <PackageReference Include="MongoDB.Driver" Version="2.25.0" />
         <PackageReference Include="Serilog" Version="3.1.1"/>
         <PackageReference Include="Serilog.AspNetCore" Version="8.0.1"/>
         <PackageReference Include="Serilog.Sinks.Console" Version="5.0.1"/>
@@ -47,11 +46,5 @@
         <Content Include="..\.dockerignore">
             <Link>.dockerignore</Link>
         </Content>
-    </ItemGroup>
-
-    <ItemGroup>
-        <Reference Include="SpotifyAPI.Web">
-            <HintPath>..\..\SpotifyAPI-NET-master\SpotifyAPI.Web\bin\Release\net8.0\SpotifyAPI.Web.dll</HintPath>
-        </Reference>
     </ItemGroup>
 </Project>
