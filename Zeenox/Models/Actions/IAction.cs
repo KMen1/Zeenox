@@ -8,6 +8,4 @@ public interface IAction
     IUser User { get; }
     ActionType Type { get; }
     long Timestamp { get; }
-
-    string Stringify();
 }

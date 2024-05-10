@@ -10,6 +10,4 @@ public class SkipAction(IUser user, ExtendedTrackItem previous, ExtendedTrackIte
 {
     public TrackDTO PreviousTrack { get; } = new(previous);
     public TrackDTO Track { get; } = new(trackItem);
-
-    public override string Stringify() => $"skipped to: {Track.Title}";
 }

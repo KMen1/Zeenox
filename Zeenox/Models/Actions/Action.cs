@@ -1,5 +1,4 @@
-﻿using System.Text;
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 using Discord;
 using Zeenox.Dtos;
@@ -20,21 +19,12 @@ public class UserJsonConverter : JsonConverter<IUser>
     }
 }
 
-public abstract class Action(IUser user, ActionType type) : IAction
+public class Action(IUser user, ActionType type) : IAction
 {
     [JsonConverter(typeof(UserJsonConverter))]
     public IUser User { get; } = user;
 
     public ActionType Type { get; } = type;
     public long Timestamp { get; } = DateTimeOffset.Now.ToUnixTimeSeconds();
-
-    public virtual string Stringify() => "";
-
-    public string StringifyFull()
-    {
-        var sb = new StringBuilder();
-        sb.Append($"[<t:{Timestamp}:t>] {User.Mention} ");
-        sb.Append(((IAction)this).Stringify());
-        return sb.ToString();
-    }
+    public string Message => this.GetMessage();
 }

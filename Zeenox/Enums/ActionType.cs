@@ -3,15 +3,23 @@
 public enum ActionType
 {
     Play,
-    Queue,
     Rewind,
     Pause,
     Resume,
     Skip,
+    SkipTo,
     Stop,
     Seek,
     VolumeUp,
     VolumeDown,
     ChangeLoopMode,
-    ToggleAutoPlay
+    ToggleAutoPlay,
+    AddTrack,
+    AddPlaylist,
+    MoveTrack,
+    RemoveTrack,
+    ClearQueue,
+    DistinctQueue,
+    ReverseQueue,
+    ShuffleQueue
 }
