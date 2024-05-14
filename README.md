@@ -26,8 +26,7 @@ A Discord music bot that focuses on speed and ease of usability, with a web dash
 ### Requirements
 
 - .NET 8
-- Running instance of [Lavalink](https://github.com/lavalink-devs/Lavalink) with [LavaSrc](https://github.com/topi314/LavaSrc) and [LavaSearch](https://github.com/topi314/LavaSearch)
-- Spotify application, [click here](https://developer.spotify.com/dashboard/applications) to create one
+- Running instance of [Lavalink](https://github.com/lavalink-devs/Lavalink) with [LavaSrc](https://github.com/topi314/LavaSrc), [LavaSearch](https://github.com/topi314/LavaSearch), [youtube-source](https://github.com/lavalink-devs/youtube-source) [LavaLyrics](https://github.com/topi314/LavaLyrics), [Lyrics.Java](https://github.com/DuncteBot/java-timed-lyrics)
 - Discord OAuth application, [click here](https://discord.com/developers/applications) to create one
 - MongoDB database
 
@@ -54,43 +53,17 @@ dotnet publish "Zeenox/Zeenox.csproj" -c Release -o /app/publish /p:UseAppHost=f
 
 ```json
 {
-  "Kestrel": {
-    "Endpoints": {
-      "Http": {
-        "Url": "http://*:80"
-      },
-      "Https": {
-        "Url": "https://*:443"
-      }
-    }
-  },
-  "https_port": 443,
-  "JwtSettings": {
-    "Key": "",
-    "Issuer": "https://CHANGEME.com",
-    "Audience": "https://CHANGEME.com"
-  },
+  "JwtKey": "",
+  "MongoConnectionString": "",
   "Discord": {
     "Token": "",
     "Activity": "/play"
-  },
-  "MongoDB": {
-    "ConnectionString": "",
-    "Database": "zeenox",
-    "ConfigCollection": "config",
-    "ResumeSessionCollection": "resume_sessions"
   },
   "Lavalink": {
     "Host": "http://localhost:2333",
     "Password": "youshallnotpass"
   },
-  "Spotify": {
-    "ClientId": "",
-    "ClientSecret": "",
-    "Market": "US"
-  },
-  "AllowedHosts": "*",
-  "FrontendUrl": "https://CHANGEME.com"
+  "AllowedHosts": "*"
 }
 ```
 
