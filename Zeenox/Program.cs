@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text;
 using System.Threading.RateLimiting;
 using Asp.Versioning;
@@ -83,7 +84,7 @@ builder.Services
     })
     .AddSingleton<IMongoClient>(
         new MongoClient(
-            config["MongoDB:ConnectionString"]
+            config["MongoConnectionString"]
                 ?? throw new Exception("MongoDB connection string is not set!")
         )
     )
@@ -122,13 +123,11 @@ builder.Services
     {
         x.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidIssuer =
-                config["JwtSettings:Issuer"] ?? throw new Exception("JWT issuer is not set!"),
-            ValidAudience =
-                config["JwtSettings:Audience"] ?? throw new Exception("JWT audience is not set!"),
+            ValidIssuer = "Zeenox-API",
+            ValidAudience = "Zeenox-Client",
             IssuerSigningKey = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(
-                    config["JwtSettings:Key"] ?? throw new Exception("JWT key is not set!")
+                    config["JwtKey"] ?? throw new Exception("JWT key is not set!")
                 )
             ),
             ValidateIssuer = true,
@@ -138,7 +137,6 @@ builder.Services
         };
     });
 
-builder.Services.AddCors();
 builder.Services.AddAuthorization();
 
 builder.Services.AddControllers();
@@ -157,7 +155,20 @@ builder.Services
         options.GroupNameFormat = "'v'VVV";
         options.SubstituteApiVersionInUrl = true;
     });
+
 builder.Services.AddRouting(x => x.LowercaseUrls = true);
+
+builder.Services.AddHttpsRedirection(x =>
+{
+    x.RedirectStatusCode = 308;
+    x.HttpsPort = 443;
+});
+
+builder.WebHost.ConfigureKestrel(x =>
+{
+    x.Listen(IPAddress.Any, 80);
+    x.Listen(IPAddress.Any, 443, options => options.UseHttps());
+});
 
 var app = builder.Build();
 
@@ -171,11 +182,6 @@ if (app.Environment.IsDevelopment())
 else
 {
     app.UseHttpsRedirection();
-    app.UseCors(x =>
-    {
-        x.WithOrigins(config["FrontendUrl"] ?? throw new Exception("Frontend URL is not set!"))
-            .AllowAnyMethod();
-    });
 }
 
 app.UseAuthentication();

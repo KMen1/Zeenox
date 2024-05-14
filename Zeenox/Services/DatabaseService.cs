@@ -6,31 +6,39 @@ namespace Zeenox.Services;
 
 public sealed class DatabaseService
 {
+    private IMongoCollection<GuildConfig> _configs = null!;
+    private IMongoCollection<ResumeSession> _resumeSessions = null!;
+    private readonly IMongoClient _mongoClient;
     private readonly IMemoryCache _cache;
-    private readonly IMongoCollection<GuildConfig> _configs;
     private readonly ILogger<DatabaseService> _logger;
-    private readonly IMongoCollection<ResumeSession> _resumeSessions;
 
     public DatabaseService(
         IMongoClient mongoClient,
-        IConfiguration config,
         IMemoryCache cache,
         ILogger<DatabaseService> logger
     )
     {
-        _logger = logger;
+        _mongoClient = mongoClient;
         _cache = cache;
-        var database = mongoClient.GetDatabase(
-            config["MongoDB:Database"] ?? throw new Exception("MongoDB database name is not set!")
-        );
-        _configs = database.GetCollection<GuildConfig>(
-            config["MongoDB:ConfigCollection"]
-            ?? throw new Exception("MongoDB config collection name is not set!")
-        );
-        _resumeSessions = database.GetCollection<ResumeSession>(
-            config["MongoDB:ResumeSessionCollection"]
-            ?? throw new Exception("MongoDB resume session collection name is not set!")
-        );
+        _logger = logger;
+        Setup();
+    }
+
+    private void Setup()
+    {
+        _logger.LogInformation("Database service starting...");
+        var dbs = _mongoClient.ListDatabaseNames().ToList();
+        var db = _mongoClient.GetDatabase("zeenox");
+
+        if (!dbs.Contains("zeenox"))
+        {
+            db.CreateCollection("guild_configs");
+            db.CreateCollection("resume_sessions");
+        }
+
+        _configs = db.GetCollection<GuildConfig>("guild_configs");
+        _resumeSessions = db.GetCollection<ResumeSession>("resume_sessions");
+        _logger.LogInformation("Database service started");
     }
 
     private async Task AddGuildConfigAsync(ulong guildId)
@@ -77,12 +85,12 @@ public sealed class DatabaseService
     public async Task SaveResumeSessionAsync(ResumeSession session)
     {
         await _resumeSessions
-              .ReplaceOneAsync(
-                  x => x.GuildId == session.GuildId,
-                  session,
-                  new ReplaceOptions { IsUpsert = true }
-              )
-              .ConfigureAwait(false);
+            .ReplaceOneAsync(
+                x => x.GuildId == session.GuildId,
+                session,
+                new ReplaceOptions { IsUpsert = true }
+            )
+            .ConfigureAwait(false);
         _logger.LogInformation("Resume session saved for {GuildId}", session.GuildId);
         _logger.LogDebug("Resume session: {@ResumeSession}", session);
     }
@@ -90,8 +98,8 @@ public sealed class DatabaseService
     public async Task<ResumeSession?> GetResumeSessionAsync(ulong guildId)
     {
         var cursor = await _resumeSessions
-                           .FindAsync(x => x.GuildId == guildId)
-                           .ConfigureAwait(false);
+            .FindAsync(x => x.GuildId == guildId)
+            .ConfigureAwait(false);
         var result = await cursor.FirstOrDefaultAsync().ConfigureAwait(false);
         _logger.LogInformation("Got resume session for {GuildId}", guildId);
         _logger.LogDebug("Resume session: {@ResumeSession}", result);
@@ -102,15 +110,5 @@ public sealed class DatabaseService
     {
         await _resumeSessions.DeleteOneAsync(x => x.GuildId == guildId).ConfigureAwait(false);
         _logger.LogInformation("Resume session deleted for {GuildId}", guildId);
-    }
-
-    public async Task<IEnumerable<ResumeSession>> GetResumeSessionsAsync(params ulong[] guildId)
-    {
-        var cursor = await _resumeSessions
-                           .FindAsync(x => guildId.Contains(x.GuildId))
-                           .ConfigureAwait(false);
-        var result = await cursor.ToListAsync().ConfigureAwait(false);
-        _logger.LogInformation("Got resume sessions for {GuildIds}", string.Join(", ", guildId));
-        return result;
     }
 }

@@ -21,7 +21,7 @@ public class SearchController(IAudioService audioService) : ControllerBase
         var result = await audioService.Tracks
                                        .LoadTracksAsync(
                                            query,
-                                           new TrackLoadOptions(TrackSearchMode.Spotify, StrictSearchBehavior.Throw))
+                                           new TrackLoadOptions(TrackSearchMode.Spotify))
                                        .ConfigureAwait(false);
         if (!result.IsSuccess)
         {

@@ -16,7 +16,7 @@ namespace Zeenox.Controllers;
 [ApiVersion("1.0")]
 public class IdentityController(IConfiguration configuration) : ControllerBase
 {
-    private readonly string _key = configuration["JwtSettings:Key"]!;
+    private readonly string _key = configuration["JwtKey"]!;
 
     [Consumes(MediaTypeNames.Application.Json)]
     [HttpPost]
@@ -35,8 +35,8 @@ public class IdentityController(IConfiguration configuration) : ControllerBase
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(claims),
-            Issuer = configuration["JwtSettings:Issuer"],
-            Audience = configuration["JwtSettings:Audience"],
+            Issuer = "Zeenox-API",
+            Audience = "Zeenox-Client",
             SigningCredentials = new SigningCredentials(
                 new SymmetricSecurityKey(key),
                 SecurityAlgorithms.HmacSha512Signature
